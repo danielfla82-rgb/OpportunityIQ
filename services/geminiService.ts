@@ -37,6 +37,35 @@ const getClient = () => {
   return new GoogleGenAI({ apiKey: key || 'dummy_key' });
 };
 
+// --- HELPER: ROBUST JSON PARSER ---
+// AI models often wrap JSON in markdown blocks (```json ... ```). This helper strips them.
+const cleanAndParseJSON = (text: string | undefined): any => {
+  if (!text) throw new Error("Empty response from AI");
+  
+  try {
+    // 1. Remove markdown code blocks
+    let cleaned = text.replace(/```json\n?|```/g, '').trim();
+    
+    // 2. Find the first '{' or '[' and the last '}' or ']'
+    const firstBrace = cleaned.indexOf('{');
+    const firstBracket = cleaned.indexOf('[');
+    const start = (firstBrace === -1) ? firstBracket : (firstBracket === -1) ? firstBrace : Math.min(firstBrace, firstBracket);
+    
+    const lastBrace = cleaned.lastIndexOf('}');
+    const lastBracket = cleaned.lastIndexOf(']');
+    const end = Math.max(lastBrace, lastBracket);
+
+    if (start >= 0 && end >= 0) {
+      cleaned = cleaned.substring(start, end + 1);
+    }
+
+    return JSON.parse(cleaned);
+  } catch (e) {
+    console.error("JSON Parse Logic Error:", e, "Original Text:", text);
+    throw e;
+  }
+};
+
 // --- CHAT FUNCTIONALITY ---
 export const createSpecialistChat = (thl: number, context: string): Chat => {
   const ai = getClient();
@@ -118,7 +147,6 @@ export const getDelegationAdvice = async (
 ): Promise<{ text: string, archetype: NietzscheArchetype }> => {
   const ai = getClient();
   const profit = (thl * hoursSaved) - cost;
-  const isPositive = profit > 0;
   
   const prompt = `
     Use a metáfora das "Três Metamorfoses" de Nietzsche (Assim Falou Zaratustra) para classificar esta tarefa de delegação.
@@ -149,8 +177,7 @@ export const getDelegationAdvice = async (
       }
     });
     
-    const text = response.text || "{}";
-    return JSON.parse(text);
+    return cleanAndParseJSON(response.text);
   } catch (error) {
     return {
       text: "Erro ao consultar Zaratustra.",
@@ -199,8 +226,7 @@ export const getRefusalScripts = async (request: string): Promise<{diplomatic: s
       }
     });
     
-    const text = response.text || "{}";
-    return JSON.parse(text);
+    return cleanAndParseJSON(response.text);
   } catch (error) {
     return {
       diplomatic: "Agradeço, mas não posso.",
@@ -236,8 +262,7 @@ export const getParetoAnalysis = async (tasks: string): Promise<ParetoResult> =>
       }
     });
     
-    const text = response.text || "{}";
-    return JSON.parse(text);
+    return cleanAndParseJSON(response.text);
   } catch (error) {
     console.error(error);
     return {
@@ -276,8 +301,7 @@ export const getPhilosophicalAnalysis = async (dilemma: string): Promise<RazorAn
       }
     });
     
-    const text = response.text || "{}";
-    return JSON.parse(text);
+    return cleanAndParseJSON(response.text);
   } catch (error) {
     return {
       occam: "Simplifique.",
@@ -317,8 +341,7 @@ export const getPreMortemAnalysis = async (goal: string): Promise<PreMortemResul
       }
     });
     
-    const text = response.text || "{}";
-    return JSON.parse(text);
+    return cleanAndParseJSON(response.text);
   } catch (error) {
     return {
        deathDate: "Futuro",
@@ -358,8 +381,7 @@ export const getFutureSimulations = async (pathA: string, pathB: string): Promis
       }
     });
     
-    const text = response.text || "{}";
-    return JSON.parse(text);
+    return cleanAndParseJSON(response.text);
   } catch (error) {
     return {
       pathA: { title: pathA, memoir: "Erro.", regretLevel: 5 },
@@ -393,8 +415,7 @@ export const getEnergyAudit = async (tasks: string): Promise<EnergyAuditItem[]> 
       }
     });
     
-    const text = response.text || "[]";
-    return JSON.parse(text);
+    return cleanAndParseJSON(response.text) || [];
   } catch (error) {
     return [];
   }
@@ -418,8 +439,7 @@ export const getSkillAnalysis = async (skill: string, currentTHL: number, increa
       }
     });
     
-    const text = response.text || "{}";
-    return JSON.parse(text);
+    return cleanAndParseJSON(response.text);
   } catch (error) {
     return { isRealistic: true, commentary: "Sem dados.", marketRealityCheck: "N/A" };
   }
@@ -427,7 +447,6 @@ export const getSkillAnalysis = async (skill: string, currentTHL: number, increa
 
 export const getInactionAnalysis = async (decision: string, monthlyCost: number): Promise<InactionAnalysis> => {
   const ai = getClient();
-  const c12 = monthlyCost * 12;
   const prompt = `
     Analise a INAÇÃO para: "${decision}". Custo mensal R$ ${monthlyCost}.
     Use a ideia de que "não escolher é escolher".
@@ -440,10 +459,10 @@ export const getInactionAnalysis = async (decision: string, monthlyCost: number)
       contents: prompt,
       config: { responseMimeType: "application/json" }
     });
-    const data = JSON.parse(response.text || "{}");
+    const data = cleanAndParseJSON(response.text);
     return {
       cumulativeCost6Months: monthlyCost * 6,
-      cumulativeCost1year: c12,
+      cumulativeCost1year: monthlyCost * 12,
       cumulativeCost3years: monthlyCost * 36,
       intangibleCosts: data.intangibleCosts || [],
       callToAction: data.callToAction || "Decida."
@@ -466,7 +485,7 @@ export const getLifestyleAudit = async (item: string, price: number): Promise<Li
       contents: prompt,
       config: { responseMimeType: "application/json" }
     });
-    const data = JSON.parse(response.text || "{}");
+    const data = cleanAndParseJSON(response.text);
     return {
       hoursOfLifeLost: 0,
       futureValueLost: futureValue,
@@ -498,7 +517,7 @@ export const analyzeLifeContext = async (routine: string, assets: string, thl: n
        - Eixo X (Autonomia): O quanto o usuário controla a própria agenda? 0 = Escravo da rotina, 100 = Soberano do tempo.
        - Eixo Y (Eficiência): O quão bem ele aloca recursos/energia? 0 = Desperdício total, 100 = Máquina de alavancagem.
        
-    Retorne JSON estrito:
+    Retorne JSON ESTRITO, sem markdown, sem explicações antes ou depois. Apenas o objeto JSON:
     {
        "delegationSuggestions": [{ "name": "...", "cost": 100, "hoursSaved": 2, "frequency": "weekly", "category": "other", "id": "..." }],
        "sunkCostSuspects": [{ "title": "...", "description": "..." }],
@@ -520,18 +539,17 @@ export const analyzeLifeContext = async (routine: string, assets: string, thl: n
       }
     });
     
-    const text = response.text || "{}";
-    return JSON.parse(text);
+    return cleanAndParseJSON(response.text);
   } catch (error) {
     console.error(error);
     return {
       delegationSuggestions: [],
       sunkCostSuspects: [],
       lifestyleRisks: [],
-      summary: "Erro na análise.",
+      summary: "Erro na análise neural. O sistema não conseguiu decodificar a resposta do oráculo.",
       eternalReturnScore: 50,
       eternalReturnAnalysis: "Dados insuficientes.",
-      matrixCoordinates: { x: 50, y: 50, quadrantLabel: "Indefinido" }
+      matrixCoordinates: { x: 50, y: 50, quadrantLabel: "Indefinido (Erro)" }
     };
   }
 };

@@ -113,6 +113,11 @@ const DiagnosisReport: React.FC<Props> = ({ result, thl, profile, onApply, onBac
             <div className="mt-4 text-center">
                <div className="text-xl font-serif text-white">{coords.quadrantLabel}</div>
                <div className="text-xs text-slate-500">Autonomia: {coords.x}% | Eficiência: {coords.y}%</div>
+               {coords.x === 50 && coords.y === 50 && (
+                 <div className="text-[10px] text-amber-500 mt-1 flex items-center justify-center gap-1">
+                    <AlertTriangle className="w-3 h-3"/> Coordenadas padrão detectadas. Tente refinar seu contexto.
+                 </div>
+               )}
             </div>
 
             {/* Matrix Info Modal/Overlay */}
