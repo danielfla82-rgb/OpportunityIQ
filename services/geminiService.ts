@@ -1,5 +1,5 @@
 
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 import type { Chat } from "@google/genai";
 import { FinancialProfile, CalculatedTHL, SunkCostScenario, ParetoResult, RazorAnalysis, EnergyAuditItem, SkillAnalysis, PreMortemResult, TimeTravelResult, InactionAnalysis, LifestyleAudit, ContextAnalysisResult, NietzscheArchetype } from "../types";
 
@@ -516,17 +516,6 @@ export const analyzeLifeContext = async (routine: string, assets: string, thl: n
     5. POSICIONE NA MATRIZ DE POTÊNCIA (Coordenadas X/Y 0-100):
        - Eixo X (Autonomia): O quanto o usuário controla a própria agenda? 0 = Escravo da rotina, 100 = Soberano do tempo.
        - Eixo Y (Eficiência): O quão bem ele aloca recursos/energia? 0 = Desperdício total, 100 = Máquina de alavancagem.
-       
-    Retorne JSON ESTRITO, sem markdown, sem explicações antes ou depois. Apenas o objeto JSON:
-    {
-       "delegationSuggestions": [{ "name": "...", "cost": 100, "hoursSaved": 2, "frequency": "weekly", "category": "other", "id": "..." }],
-       "sunkCostSuspects": [{ "title": "...", "description": "..." }],
-       "lifestyleRisks": ["..."],
-       "summary": "Resumo...",
-       "eternalReturnScore": 45,
-       "eternalReturnAnalysis": "Texto filosófico curto explicando o score.",
-       "matrixCoordinates": { "x": 30, "y": 60, "quadrantLabel": "Camelo Eficiente" }
-    }
   `;
 
   try {
@@ -535,18 +524,64 @@ export const analyzeLifeContext = async (routine: string, assets: string, thl: n
       contents: prompt,
       config: {
         responseMimeType: "application/json",
-        thinkingConfig: { thinkingBudget: 2048 }
+        // No thinking budget for pure JSON tasks to ensure structure
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            delegationSuggestions: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  id: { type: Type.STRING },
+                  name: { type: Type.STRING },
+                  cost: { type: Type.NUMBER },
+                  hoursSaved: { type: Type.NUMBER },
+                  frequency: { type: Type.STRING },
+                  category: { type: Type.STRING },
+                }
+              }
+            },
+            sunkCostSuspects: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  title: { type: Type.STRING },
+                  description: { type: Type.STRING },
+                }
+              }
+            },
+            lifestyleRisks: {
+              type: Type.ARRAY,
+              items: { type: Type.STRING }
+            },
+            summary: { type: Type.STRING },
+            eternalReturnScore: { type: Type.INTEGER },
+            eternalReturnAnalysis: { type: Type.STRING },
+            matrixCoordinates: {
+              type: Type.OBJECT,
+              properties: {
+                x: { type: Type.INTEGER },
+                y: { type: Type.INTEGER },
+                quadrantLabel: { type: Type.STRING }
+              }
+            }
+          },
+          required: ["delegationSuggestions", "sunkCostSuspects", "lifestyleRisks", "summary", "eternalReturnScore", "eternalReturnAnalysis", "matrixCoordinates"]
+        }
       }
     });
     
+    // With schema validation, cleanAndParseJSON might be redundant but safe
     return cleanAndParseJSON(response.text);
   } catch (error) {
-    console.error(error);
+    console.error("Diagnosis Error:", error);
     return {
       delegationSuggestions: [],
       sunkCostSuspects: [],
       lifestyleRisks: [],
-      summary: "Erro na análise neural. O sistema não conseguiu decodificar a resposta do oráculo.",
+      summary: "Erro na análise neural. O oráculo falhou em estruturar a visão. Tente simplificar o texto.",
       eternalReturnScore: 50,
       eternalReturnAnalysis: "Dados insuficientes.",
       matrixCoordinates: { x: 50, y: 50, quadrantLabel: "Indefinido (Erro)" }
