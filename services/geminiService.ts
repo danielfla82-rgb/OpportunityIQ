@@ -120,8 +120,8 @@ export const getSunkCostAnalysis = async (scenario: SunkCostScenario, thl: Calcu
     return response.text || "Sem resposta do Oráculo.";
   } catch (error: any) {
     console.error("AI Error:", error);
-    if (error.message?.includes('API key')) return "Erro: Chave de API inválida.";
-    return "O Oráculo está mudo. Verifique sua conexão.";
+    if (error.message?.includes('API key')) return "Erro: Chave de API inválida/ausente.";
+    return `Erro na IA: ${error.message || 'Falha de conexão'}`;
   }
 };
 
@@ -147,7 +147,7 @@ export const getDelegationAdvice = async (item: string, cost: number, hoursSaved
     return cleanAndParseJSON(response.text);
   } catch (error) {
     console.error("AI Error:", error);
-    return { text: "Zaratustra não respondeu.", archetype: "CAMEL" };
+    return { text: "Zaratustra não respondeu (Erro API).", archetype: "CAMEL" };
   }
 };
 
@@ -187,7 +187,7 @@ export const getRefusalScripts = async (request: string): Promise<{diplomatic: s
     return cleanAndParseJSON(response.text);
   } catch (error) {
     console.error("AI Error:", error);
-    return { diplomatic: "Não posso.", direct: "Não.", alternative: "Não agora." };
+    return { diplomatic: "Erro de conexão.", direct: "Erro.", alternative: "Tente novamente." };
   }
 };
 
@@ -452,12 +452,14 @@ export const analyzeLifeContext = async (routine: string, assets: string, thl: n
       }
     });
     return cleanAndParseJSON(response.text);
-  } catch (error) {
-    console.error("AI Error:", error);
+  } catch (error: any) {
+    console.error("analyzeLifeContext Error:", error);
+    const msg = error.message || "Erro desconhecido";
     return {
       delegationSuggestions: [], sunkCostSuspects: [], lifestyleRisks: [],
-      summary: "Erro na análise (verifique console).", eternalReturnScore: 50, eternalReturnAnalysis: "Indisponível",
-      matrixCoordinates: { x: 50, y: 50, quadrantLabel: "Indefinido" }
+      summary: `FALHA NA INTELIGÊNCIA: ${msg}. Verifique a Chave de API no arquivo .env (VITE_API_KEY).`,
+      eternalReturnScore: 0, eternalReturnAnalysis: "Indisponível",
+      matrixCoordinates: { x: 50, y: 50, quadrantLabel: "Erro de Conexão" }
     };
   }
 };

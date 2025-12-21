@@ -146,10 +146,21 @@ const App: React.FC = () => {
   const handleContextAnalysisComplete = async (result: ContextAnalysisResult, context: LifeContext) => {
      setLifeContext(context);
      setAnalysisResult(result);
-     if (session?.user?.id) {
-        await dataService.saveContext(session.user.id, context, result);
-     }
+     
+     // CRITICAL FIX: Update view immediately (Optimistic UI) before trying to save to DB.
+     // This prevents the app from "hanging" if the Supabase save fails due to schema mismatch.
      setView(AppView.DIAGNOSIS);
+
+     if (session?.user?.id) {
+        try {
+            const { error } = await dataService.saveContext(session.user.id, context, result);
+            if (error) {
+                console.error("Supabase Save Error (Check SQL Schema):", error);
+            }
+        } catch (e) {
+            console.error("Supabase Connection Failed:", e);
+        }
+     }
   };
 
   const handleApplyDiagnosis = () => {
