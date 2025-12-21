@@ -3,71 +3,84 @@ import { GoogleGenAI, Type, Schema } from "@google/genai";
 import type { Chat } from "@google/genai";
 import { FinancialProfile, CalculatedTHL, SunkCostScenario, ParetoResult, RazorAnalysis, EnergyAuditItem, SkillAnalysis, PreMortemResult, TimeTravelResult, InactionAnalysis, LifestyleAudit, ContextAnalysisResult, NietzscheArchetype } from "../types";
 
-// Safety check for environment variable access to prevent crash
+// --- API KEY EXTRACTION STRATEGY ---
 const getApiKey = () => {
   try {
-    // 1. Check process.env (Standard Node/Vite define)
-    // @ts-ignore
-    if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
-      // @ts-ignore
-      return process.env.API_KEY;
-    }
-    // 2. Check window.process.env (Our polyfill)
-    // @ts-ignore
-    if (typeof window !== 'undefined' && window.process && window.process.env && window.process.env.API_KEY) {
-      // @ts-ignore
-      return window.process.env.API_KEY;
-    }
-    // 3. Check standard Vite import.meta
+    // Priority 1: Vite Environment (Standard for this stack)
     // @ts-ignore
     if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_KEY) {
       // @ts-ignore
       return import.meta.env.VITE_API_KEY;
     }
+    // Priority 2: Standard Process Env
+    // @ts-ignore
+    if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
+      // @ts-ignore
+      return process.env.API_KEY;
+    }
+    // Priority 3: Window Polyfill (from index.html)
+    // @ts-ignore
+    if (typeof window !== 'undefined' && window.process && window.process.env && window.process.env.API_KEY) {
+      // @ts-ignore
+      return window.process.env.API_KEY;
+    }
   } catch (e) {
-    console.warn("Could not access process.env or import.meta.env", e);
+    console.warn("Environment variable access failed.", e);
   }
   return '';
 };
 
 const getClient = () => {
   const key = getApiKey();
-  if (!key) console.warn("API Key is missing. AI features will fail.");
+  if (!key || key === 'dummy_key') {
+    console.error("CRITICAL: API Key is missing or invalid. AI features will not work.");
+  }
+  // Initialize even with empty key to allow app to load, requests will fail gracefully later
   return new GoogleGenAI({ apiKey: key || 'dummy_key' });
 };
 
-// --- HELPER: ROBUST JSON PARSER ---
-// Still useful as a fallback for the raw text response property if schema strictly fails (rare)
+// --- HELPER: BULLETPROOF JSON PARSER ---
 const cleanAndParseJSON = (text: string | undefined): any => {
   if (!text) {
-    console.error("GeminiService: Received empty response text.");
-    throw new Error("Empty response from AI");
+    throw new Error("Gemini API retornou texto vazio.");
   }
+  
   try {
-    // Remove markdown code blocks if present (even with responseSchema, sometimes redundancy occurs)
-    let cleaned = text.replace(/```json\n?|```/g, '').trim();
-    
-    // Locate valid JSON boundaries
-    const firstBrace = cleaned.indexOf('{');
-    const firstBracket = cleaned.indexOf('[');
-    
-    if (firstBrace === -1 && firstBracket === -1) {
-        // Attempt to parse directly in case it's a raw primitive or malformed
-        return JSON.parse(cleaned);
-    }
+    // 1. First attempt: Direct parse
+    return JSON.parse(text);
+  } catch (e1) {
+    try {
+      // 2. Second attempt: Extract JSON from Markdown code blocks or messy text
+      let cleaned = text;
+      
+      // Find the first '{' or '['
+      const firstBrace = text.indexOf('{');
+      const firstBracket = text.indexOf('[');
+      
+      let start = -1;
+      if (firstBrace !== -1 && firstBracket !== -1) {
+        start = Math.min(firstBrace, firstBracket);
+      } else if (firstBrace !== -1) {
+        start = firstBrace;
+      } else {
+        start = firstBracket;
+      }
 
-    const start = (firstBrace === -1) ? firstBracket : (firstBracket === -1) ? firstBrace : Math.min(firstBrace, firstBracket);
-    const lastBrace = cleaned.lastIndexOf('}');
-    const lastBracket = cleaned.lastIndexOf(']');
-    const end = Math.max(lastBrace, lastBracket);
-    
-    if (start >= 0 && end >= 0) {
-      cleaned = cleaned.substring(start, end + 1);
+      // Find the last '}' or ']'
+      const lastBrace = text.lastIndexOf('}');
+      const lastBracket = text.lastIndexOf(']');
+      const end = Math.max(lastBrace, lastBracket);
+
+      if (start !== -1 && end !== -1 && end > start) {
+        cleaned = text.substring(start, end + 1);
+        return JSON.parse(cleaned);
+      }
+      
+      throw new Error("Não foi possível encontrar um bloco JSON válido na resposta.");
+    } catch (e2) {
+      console.error("JSON Parse Failure. Raw Text:", text);
+      throw e2;
     }
-    return JSON.parse(cleaned);
-  } catch (e) {
-    console.error("JSON Parse Logic Error. Raw Text:", text, e);
-    throw e;
   }
 };
 
@@ -102,16 +115,13 @@ export const getSunkCostAnalysis = async (scenario: SunkCostScenario, thl: Calcu
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: prompt,
-      config: { 
-        // FIX: Must set maxOutputTokens > thinkingBudget to allow room for the answer
-        thinkingConfig: { thinkingBudget: 1024 },
-        maxOutputTokens: 2048
-      } 
+      // Removing thinkingConfig to ensure stability
     });
-    return response.text || "Sem resposta.";
-  } catch (error) {
-    console.error("getSunkCostAnalysis Error:", error);
-    return "O Oráculo está mudo (Erro de API). Verifique sua chave ou tente novamente.";
+    return response.text || "Sem resposta do Oráculo.";
+  } catch (error: any) {
+    console.error("AI Error:", error);
+    if (error.message?.includes('API key')) return "Erro: Chave de API inválida.";
+    return "O Oráculo está mudo. Verifique sua conexão.";
   }
 };
 
@@ -136,7 +146,7 @@ export const getDelegationAdvice = async (item: string, cost: number, hoursSaved
     });
     return cleanAndParseJSON(response.text);
   } catch (error) {
-    console.error("getDelegationAdvice Error:", error);
+    console.error("AI Error:", error);
     return { text: "Zaratustra não respondeu.", archetype: "CAMEL" };
   }
 };
@@ -150,7 +160,6 @@ export const getTimeWisdom = async (): Promise<string> => {
     });
     return response.text || "Amor Fati.";
   } catch (error) {
-    // Silent fail for ambient features is acceptable
     return "Torna-te quem tu és.";
   }
 };
@@ -177,7 +186,7 @@ export const getRefusalScripts = async (request: string): Promise<{diplomatic: s
     });
     return cleanAndParseJSON(response.text);
   } catch (error) {
-    console.error("getRefusalScripts Error:", error);
+    console.error("AI Error:", error);
     return { diplomatic: "Não posso.", direct: "Não.", alternative: "Não agora." };
   }
 };
@@ -203,7 +212,7 @@ export const getParetoAnalysis = async (tasks: string): Promise<ParetoResult> =>
     });
     return cleanAndParseJSON(response.text);
   } catch (error) {
-    console.error("getParetoAnalysis Error:", error);
+    console.error("AI Error:", error);
     return { vitalFew: [], trivialMany: [] };
   }
 };
@@ -218,8 +227,6 @@ export const getPhilosophicalAnalysis = async (dilemma: string): Promise<RazorAn
       contents: prompt,
       config: {
         responseMimeType: "application/json",
-        // FIX: Added output tokens limit for safety when combined with thinking if enabled later
-        maxOutputTokens: 2048,
         responseSchema: {
           type: Type.OBJECT,
           properties: {
@@ -233,7 +240,7 @@ export const getPhilosophicalAnalysis = async (dilemma: string): Promise<RazorAn
     });
     return cleanAndParseJSON(response.text);
   } catch (error) {
-    console.error("getPhilosophicalAnalysis Error:", error);
+    console.error("AI Error:", error);
     return { occam: "Erro.", inversion: "Erro.", regret: "Erro.", synthesis: "Erro na API." };
   }
 };
@@ -260,7 +267,7 @@ export const getPreMortemAnalysis = async (goal: string): Promise<PreMortemResul
     });
     return cleanAndParseJSON(response.text);
   } catch (error) {
-    console.error("getPreMortemAnalysis Error:", error);
+    console.error("AI Error:", error);
     return { deathDate: "Futuro", causeOfDeath: "Erro API", autopsyReport: [] };
   }
 };
@@ -275,7 +282,8 @@ export const getFutureSimulations = async (pathA: string, pathB: string): Promis
       contents: prompt,
       config: {
         responseMimeType: "application/json",
-        maxOutputTokens: 4000, // Ensure enough tokens for a detailed simulation
+        // Max tokens increased to allow full response
+        maxOutputTokens: 4096, 
         responseSchema: {
           type: Type.OBJECT,
           properties: {
@@ -288,7 +296,7 @@ export const getFutureSimulations = async (pathA: string, pathB: string): Promis
     });
     return cleanAndParseJSON(response.text);
   } catch (error) {
-    console.error("getFutureSimulations Error:", error);
+    console.error("AI Error:", error);
     return { pathA: { title: "A", memoir: "Erro", regretLevel: 5 }, pathB: { title: "B", memoir: "Erro", regretLevel: 5 }, synthesis: "Erro" };
   }
 };
@@ -320,7 +328,7 @@ export const getEnergyAudit = async (tasks: string): Promise<EnergyAuditItem[]> 
     });
     return cleanAndParseJSON(response.text);
   } catch (error) {
-    console.error("getEnergyAudit Error:", error);
+    console.error("AI Error:", error);
     return [];
   }
 };
@@ -347,7 +355,7 @@ export const getSkillAnalysis = async (skill: string, currentTHL: number, increa
     });
     return cleanAndParseJSON(response.text);
   } catch (error) {
-    console.error("getSkillAnalysis Error:", error);
+    console.error("AI Error:", error);
     return { isRealistic: false, commentary: "Erro ao analisar.", marketRealityCheck: "Verifique conexão." };
   }
 };
@@ -380,7 +388,7 @@ export const getInactionAnalysis = async (decision: string, monthlyCost: number)
       callToAction: data.callToAction || "Aja."
     };
   } catch (error) {
-    console.error("getInactionAnalysis Error:", error);
+    console.error("AI Error:", error);
     return { cumulativeCost6Months: 0, cumulativeCost1year: 0, cumulativeCost3years: 0, intangibleCosts: [], callToAction: "Erro" };
   }
 };
@@ -413,7 +421,7 @@ export const getLifestyleAudit = async (item: string, price: number): Promise<Li
       verdict: data.verdict
     };
   } catch (e) {
-    console.error("getLifestyleAudit Error:", e);
+    console.error("AI Error:", e);
     return { hoursOfLifeLost: 0, futureValueLost: 0, paretoAlternative: { name: "N/A", priceEstimate: 0, reasoning: "" }, verdict: "WAIT" };
   }
 };
@@ -445,7 +453,7 @@ export const analyzeLifeContext = async (routine: string, assets: string, thl: n
     });
     return cleanAndParseJSON(response.text);
   } catch (error) {
-    console.error("analyzeLifeContext Error:", error);
+    console.error("AI Error:", error);
     return {
       delegationSuggestions: [], sunkCostSuspects: [], lifestyleRisks: [],
       summary: "Erro na análise (verifique console).", eternalReturnScore: 50, eternalReturnAnalysis: "Indisponível",

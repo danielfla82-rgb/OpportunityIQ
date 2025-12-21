@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { CalculatedTHL, LifeContext } from '../types';
 import { createSpecialistChat } from '../services/geminiService';
 import type { GenerateContentResponse, Chat } from "@google/genai";
-import { Send, User, Bot, Loader2, MessageSquare, Quote, List, Sparkles } from 'lucide-react';
+import { Send, User, Bot, Loader2, MessageSquare, Quote, List, Sparkles, AlertCircle } from 'lucide-react';
 
 interface Props {
   thl: CalculatedTHL;
@@ -13,6 +13,7 @@ interface Props {
 interface Message {
   role: 'user' | 'model';
   text: string;
+  isError?: boolean;
 }
 
 // --- Custom Markdown Renderer Component ---
@@ -92,8 +93,7 @@ const SpecialistChat: React.FC<Props> = ({ thl, lifeContext }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Fix: Reset chat session when vital context changes (THL or Life Context)
-  // This ensures the AI always has the latest user data in its system instruction
+  // Reset chat session when vital context changes
   useEffect(() => {
     chatSessionRef.current = null;
   }, [thl.realTHL, lifeContext?.routineDescription, lifeContext?.assetsDescription]);
@@ -107,7 +107,7 @@ const SpecialistChat: React.FC<Props> = ({ thl, lifeContext }) => {
     setLoading(true);
 
     try {
-      // Initialize chat only once or if context changes (handled by useEffect above)
+      // Initialize chat only once or if context changes
       if (!chatSessionRef.current) {
          const contextString = lifeContext 
             ? `Rotina: ${lifeContext.routineDescription}. Ativos: ${lifeContext.assetsDescription}` 
@@ -132,9 +132,22 @@ const SpecialistChat: React.FC<Props> = ({ thl, lifeContext }) => {
             });
          }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Chat Error", error);
-      setMessages(prev => [...prev, { role: 'model', text: "O Oráculo silenciou. Verifique sua conexão." }]);
+      let errorMsg = "O Oráculo silenciou. Verifique sua conexão.";
+      
+      if (error.message?.includes('API key')) {
+        errorMsg = "ERRO CRÍTICO: Chave de API inválida ou ausente. Verifique suas variáveis de ambiente (VITE_API_KEY).";
+      } else if (error.message?.includes('429')) {
+        errorMsg = "Tráfego intenso no Oráculo (Erro 429). Tente novamente em alguns segundos.";
+      }
+
+      setMessages(prev => {
+         // Remove the empty loading placeholder if it exists and is empty
+         const last = prev[prev.length - 1];
+         const filtered = last.role === 'model' && last.text === '' ? prev.slice(0, -1) : prev;
+         return [...filtered, { role: 'model', text: errorMsg, isError: true }];
+      });
     } finally {
       setLoading(false);
     }
@@ -164,18 +177,20 @@ const SpecialistChat: React.FC<Props> = ({ thl, lifeContext }) => {
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border shadow-lg ${
                      msg.role === 'user' 
                         ? 'bg-slate-800 border-slate-700' 
-                        : 'bg-indigo-950 border-indigo-500/30'
+                        : msg.isError ? 'bg-red-950 border-red-500/30' : 'bg-indigo-950 border-indigo-500/30'
                   }`}>
-                     {msg.role === 'user' ? <User className="w-5 h-5 text-slate-300" /> : <Bot className="w-6 h-6 text-indigo-300" />}
+                     {msg.role === 'user' ? <User className="w-5 h-5 text-slate-300" /> : msg.isError ? <AlertCircle className="w-5 h-5 text-red-400" /> : <Bot className="w-6 h-6 text-indigo-300" />}
                   </div>
 
                   {/* Bubble */}
                   <div className={`max-w-[85%] md:max-w-[75%] rounded-2xl p-5 md:p-6 shadow-xl ${
                      msg.role === 'user' 
                         ? 'bg-slate-800 text-slate-200 rounded-tr-sm border border-slate-700' 
-                        : 'bg-gradient-to-b from-slate-900 to-slate-900/95 text-indigo-50 rounded-tl-sm border border-indigo-500/10'
+                        : msg.isError 
+                            ? 'bg-red-950/20 text-red-200 rounded-tl-sm border border-red-500/20'
+                            : 'bg-gradient-to-b from-slate-900 to-slate-900/95 text-indigo-50 rounded-tl-sm border border-indigo-500/10'
                   }`}>
-                     {msg.role === 'model' ? (
+                     {msg.role === 'model' && !msg.isError ? (
                         <div className="prose prose-invert max-w-none">
                            <FormattedMessage text={msg.text} />
                         </div>
