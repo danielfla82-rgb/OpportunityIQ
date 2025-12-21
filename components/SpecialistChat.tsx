@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { CalculatedTHL, LifeContext } from '../types';
 import { createSpecialistChat } from '../services/geminiService';
-import { GenerateContentResponse, Chat } from "@google/genai";
+import type { GenerateContentResponse, Chat } from "@google/genai";
 import { Send, User, Bot, Loader2, MessageSquare, Quote, List, Sparkles } from 'lucide-react';
 
 interface Props {

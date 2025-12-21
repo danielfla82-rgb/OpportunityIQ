@@ -1,5 +1,6 @@
 
-import { GoogleGenAI, Chat } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
+import type { Chat } from "@google/genai";
 import { FinancialProfile, CalculatedTHL, SunkCostScenario, ParetoResult, RazorAnalysis, EnergyAuditItem, SkillAnalysis, PreMortemResult, TimeTravelResult, InactionAnalysis, LifestyleAudit, ContextAnalysisResult, NietzscheArchetype } from "../types";
 
 // Safety check for environment variable access to prevent crash
@@ -37,7 +38,7 @@ const getClient = () => {
 };
 
 // --- CHAT FUNCTIONALITY ---
-export const createSpecialistChat = (thl: number, context: string) => {
+export const createSpecialistChat = (thl: number, context: string): Chat => {
   const ai = getClient();
   const systemInstruction = `
     Você é o Especialista OpportunityIQ.
