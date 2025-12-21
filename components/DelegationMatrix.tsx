@@ -130,16 +130,14 @@ const Row = ({ index, style, data }: ListChildComponentProps<RowData>) => {
   );
 };
 
-// Helper for compatible UUID generation
+// Robust UUID Generator for Supabase compatibility
 const generateUUID = () => {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
     return crypto.randomUUID();
   }
-  // Fallback for non-secure contexts
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-    return v.toString(16);
-  });
+  return '10000000-1000-4000-8000-100000000000'.replace(/[018]/g, c =>
+    (parseInt(c) ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> parseInt(c) / 4).toString(16)
+  );
 };
 
 const DelegationMatrix: React.FC<Props> = ({ thl, delegations, setDelegations }) => {
@@ -161,7 +159,6 @@ const DelegationMatrix: React.FC<Props> = ({ thl, delegations, setDelegations })
   const handleAdd = async () => {
     if (!newItem.name || !newItem.cost || !newItem.hoursSaved) return;
 
-    // FIX: Using proper UUID instead of Date.now() to prevent Postgres Errors
     const id = generateUUID();
     
     const item: DelegationItem = {
