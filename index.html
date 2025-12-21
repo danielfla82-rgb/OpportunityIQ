@@ -16,8 +16,8 @@
       window.process = window.process || {};
       window.process.env = window.process.env || {};
       window.process.env.NODE_ENV = 'production';
-      // Ensure API_KEY is at least an empty string to prevent undefined access
-      if (!window.process.env.API_KEY) window.process.env.API_KEY = '';
+      // INJECTED API KEY
+      window.process.env.API_KEY = 'AIzaSyC_seyhcmY1cKurGlH2qq_aB6fugcTkePc';
     </script>
 
     <style>
