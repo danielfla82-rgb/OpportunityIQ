@@ -31,7 +31,15 @@ const AuthScreen: React.FC<Props> = ({ onDemoLogin }) => {
       if (error) throw error;
     } catch (err: any) {
       console.error("Google Login failed:", err);
-      setErrorMsg("Erro ao iniciar login com Google.");
+      let msg = "Erro ao iniciar login com Google.";
+      
+      // Tratamento específico do erro de configuração OAuth
+      const errorBody = err?.message || JSON.stringify(err);
+      if (errorBody.includes("missing OAuth secret") || errorBody.includes("Unsupported provider")) {
+         msg = "Configuração Pendente: Ative o Google Provider no painel do Supabase e adicione o Client ID/Secret.";
+      }
+      
+      setErrorMsg(msg);
       setLoading(false);
     }
   };
@@ -51,7 +59,6 @@ const AuthScreen: React.FC<Props> = ({ onDemoLogin }) => {
         });
         if (error) throw error;
         
-        // Se o Supabase exigir confirmação de email, o session será null
         if (data.user && !data.session) {
           setConfirmationSent(true);
         }
@@ -66,10 +73,11 @@ const AuthScreen: React.FC<Props> = ({ onDemoLogin }) => {
       console.error("Auth failed:", err);
       let msg = err.message || "Falha na autenticação.";
       
-      // Tradução de erros comuns
+      if (err.status === 429) msg = "Muitas tentativas. Aguarde um momento.";
       if (msg.includes("Invalid login credentials")) msg = "Email ou senha incorretos.";
-      if (msg.includes("User already registered")) msg = "Este email já está cadastrado.";
+      if (msg.includes("User already registered")) msg = "Este email já está cadastrado. Tente entrar.";
       if (msg.includes("Password should be")) msg = "A senha deve ter pelo menos 6 caracteres.";
+      if (msg.includes("Email not confirmed")) msg = "Email não confirmado. Verifique sua caixa de entrada.";
 
       setErrorMsg(msg);
     } finally {
@@ -125,7 +133,7 @@ const AuthScreen: React.FC<Props> = ({ onDemoLogin }) => {
                    <button 
                      onClick={handleGoogleLogin}
                      disabled={loading}
-                     className="w-full bg-white text-slate-900 hover:bg-slate-100 font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-3 mb-6"
+                     className="w-full bg-white text-slate-900 hover:bg-slate-100 font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-3 mb-6 relative overflow-hidden"
                    >
                       {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
                         <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -231,7 +239,7 @@ const AuthScreen: React.FC<Props> = ({ onDemoLogin }) => {
         </div>
         
         <p className="text-center text-xs text-slate-600 mt-8 flex items-center justify-center gap-2">
-           v5.3.0 <span className="w-1 h-1 bg-slate-600 rounded-full"></span> 
+           v5.3.1 <span className="w-1 h-1 bg-slate-600 rounded-full"></span> 
            {isSupabaseConfigured ? (
              <span className="flex items-center gap-1 text-emerald-500/80"><CloudLightning className="w-3 h-3" /> Online</span>
            ) : (
