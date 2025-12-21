@@ -32,27 +32,41 @@ const getApiKey = () => {
 
 const getClient = () => {
   const key = getApiKey();
+  if (!key) console.warn("API Key is missing. AI features will fail.");
   return new GoogleGenAI({ apiKey: key || 'dummy_key' });
 };
 
 // --- HELPER: ROBUST JSON PARSER ---
 // Still useful as a fallback for the raw text response property if schema strictly fails (rare)
 const cleanAndParseJSON = (text: string | undefined): any => {
-  if (!text) throw new Error("Empty response from AI");
+  if (!text) {
+    console.error("GeminiService: Received empty response text.");
+    throw new Error("Empty response from AI");
+  }
   try {
+    // Remove markdown code blocks if present (even with responseSchema, sometimes redundancy occurs)
     let cleaned = text.replace(/```json\n?|```/g, '').trim();
+    
+    // Locate valid JSON boundaries
     const firstBrace = cleaned.indexOf('{');
     const firstBracket = cleaned.indexOf('[');
+    
+    if (firstBrace === -1 && firstBracket === -1) {
+        // Attempt to parse directly in case it's a raw primitive or malformed
+        return JSON.parse(cleaned);
+    }
+
     const start = (firstBrace === -1) ? firstBracket : (firstBracket === -1) ? firstBrace : Math.min(firstBrace, firstBracket);
     const lastBrace = cleaned.lastIndexOf('}');
     const lastBracket = cleaned.lastIndexOf(']');
     const end = Math.max(lastBrace, lastBracket);
+    
     if (start >= 0 && end >= 0) {
       cleaned = cleaned.substring(start, end + 1);
     }
     return JSON.parse(cleaned);
   } catch (e) {
-    console.error("JSON Parse Logic Error:", e);
+    console.error("JSON Parse Logic Error. Raw Text:", text, e);
     throw e;
   }
 };
@@ -81,19 +95,23 @@ export const getSunkCostAnalysis = async (scenario: SunkCostScenario, thl: Calcu
     Projeto: "${scenario.title}" (${scenario.description}).
     Dados: THL R$ ${thl.realTHL.toFixed(2)}/h. Investido: ${scenario.investedTimeMonths} meses, R$ ${scenario.investedMoney}. 
     Futuro estimado: R$ ${scenario.projectedFutureCostMoney} e ${scenario.projectedFutureCostTime} horas.
-    Use "Amor Fati" e "Custo de Oportunidade". Dê um veredito curto e brutal.
+    Use "Amor Fati" e "Custo de Oportunidade". Dê um veredito curto e brutal (máx 2 parágrafos).
   `;
 
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: prompt,
-      // Text generation benefits from thinking to produce nuance
-      config: { thinkingConfig: { thinkingBudget: 1024 } } 
+      config: { 
+        // FIX: Must set maxOutputTokens > thinkingBudget to allow room for the answer
+        thinkingConfig: { thinkingBudget: 1024 },
+        maxOutputTokens: 2048
+      } 
     });
     return response.text || "Sem resposta.";
   } catch (error) {
-    return "Erro no oráculo.";
+    console.error("getSunkCostAnalysis Error:", error);
+    return "O Oráculo está mudo (Erro de API). Verifique sua chave ou tente novamente.";
   }
 };
 
@@ -118,7 +136,8 @@ export const getDelegationAdvice = async (item: string, cost: number, hoursSaved
     });
     return cleanAndParseJSON(response.text);
   } catch (error) {
-    return { text: "Erro ao consultar Zaratustra.", archetype: "CAMEL" };
+    console.error("getDelegationAdvice Error:", error);
+    return { text: "Zaratustra não respondeu.", archetype: "CAMEL" };
   }
 };
 
@@ -131,6 +150,7 @@ export const getTimeWisdom = async (): Promise<string> => {
     });
     return response.text || "Amor Fati.";
   } catch (error) {
+    // Silent fail for ambient features is acceptable
     return "Torna-te quem tu és.";
   }
 };
@@ -157,7 +177,8 @@ export const getRefusalScripts = async (request: string): Promise<{diplomatic: s
     });
     return cleanAndParseJSON(response.text);
   } catch (error) {
-    return { diplomatic: "Não.", direct: "Não.", alternative: "Não." };
+    console.error("getRefusalScripts Error:", error);
+    return { diplomatic: "Não posso.", direct: "Não.", alternative: "Não agora." };
   }
 };
 
@@ -182,6 +203,7 @@ export const getParetoAnalysis = async (tasks: string): Promise<ParetoResult> =>
     });
     return cleanAndParseJSON(response.text);
   } catch (error) {
+    console.error("getParetoAnalysis Error:", error);
     return { vitalFew: [], trivialMany: [] };
   }
 };
@@ -196,6 +218,8 @@ export const getPhilosophicalAnalysis = async (dilemma: string): Promise<RazorAn
       contents: prompt,
       config: {
         responseMimeType: "application/json",
+        // FIX: Added output tokens limit for safety when combined with thinking if enabled later
+        maxOutputTokens: 2048,
         responseSchema: {
           type: Type.OBJECT,
           properties: {
@@ -209,7 +233,8 @@ export const getPhilosophicalAnalysis = async (dilemma: string): Promise<RazorAn
     });
     return cleanAndParseJSON(response.text);
   } catch (error) {
-    return { occam: "Erro.", inversion: "Erro.", regret: "Erro.", synthesis: "Erro." };
+    console.error("getPhilosophicalAnalysis Error:", error);
+    return { occam: "Erro.", inversion: "Erro.", regret: "Erro.", synthesis: "Erro na API." };
   }
 };
 
@@ -235,7 +260,8 @@ export const getPreMortemAnalysis = async (goal: string): Promise<PreMortemResul
     });
     return cleanAndParseJSON(response.text);
   } catch (error) {
-    return { deathDate: "Futuro", causeOfDeath: "Erro", autopsyReport: [] };
+    console.error("getPreMortemAnalysis Error:", error);
+    return { deathDate: "Futuro", causeOfDeath: "Erro API", autopsyReport: [] };
   }
 };
 
@@ -249,6 +275,7 @@ export const getFutureSimulations = async (pathA: string, pathB: string): Promis
       contents: prompt,
       config: {
         responseMimeType: "application/json",
+        maxOutputTokens: 4000, // Ensure enough tokens for a detailed simulation
         responseSchema: {
           type: Type.OBJECT,
           properties: {
@@ -261,6 +288,7 @@ export const getFutureSimulations = async (pathA: string, pathB: string): Promis
     });
     return cleanAndParseJSON(response.text);
   } catch (error) {
+    console.error("getFutureSimulations Error:", error);
     return { pathA: { title: "A", memoir: "Erro", regretLevel: 5 }, pathB: { title: "B", memoir: "Erro", regretLevel: 5 }, synthesis: "Erro" };
   }
 };
@@ -292,6 +320,7 @@ export const getEnergyAudit = async (tasks: string): Promise<EnergyAuditItem[]> 
     });
     return cleanAndParseJSON(response.text);
   } catch (error) {
+    console.error("getEnergyAudit Error:", error);
     return [];
   }
 };
@@ -318,7 +347,8 @@ export const getSkillAnalysis = async (skill: string, currentTHL: number, increa
     });
     return cleanAndParseJSON(response.text);
   } catch (error) {
-    return { isRealistic: false, commentary: "Erro", marketRealityCheck: "Erro" };
+    console.error("getSkillAnalysis Error:", error);
+    return { isRealistic: false, commentary: "Erro ao analisar.", marketRealityCheck: "Verifique conexão." };
   }
 };
 
@@ -350,6 +380,7 @@ export const getInactionAnalysis = async (decision: string, monthlyCost: number)
       callToAction: data.callToAction || "Aja."
     };
   } catch (error) {
+    console.error("getInactionAnalysis Error:", error);
     return { cumulativeCost6Months: 0, cumulativeCost1year: 0, cumulativeCost3years: 0, intangibleCosts: [], callToAction: "Erro" };
   }
 };
@@ -382,6 +413,7 @@ export const getLifestyleAudit = async (item: string, price: number): Promise<Li
       verdict: data.verdict
     };
   } catch (e) {
+    console.error("getLifestyleAudit Error:", e);
     return { hoursOfLifeLost: 0, futureValueLost: 0, paretoAlternative: { name: "N/A", priceEstimate: 0, reasoning: "" }, verdict: "WAIT" };
   }
 };
@@ -396,6 +428,7 @@ export const analyzeLifeContext = async (routine: string, assets: string, thl: n
       contents: prompt,
       config: {
         responseMimeType: "application/json",
+        // No thinking budget needed here, strict schema is enough
         responseSchema: {
           type: Type.OBJECT,
           properties: {
@@ -412,9 +445,10 @@ export const analyzeLifeContext = async (routine: string, assets: string, thl: n
     });
     return cleanAndParseJSON(response.text);
   } catch (error) {
+    console.error("analyzeLifeContext Error:", error);
     return {
       delegationSuggestions: [], sunkCostSuspects: [], lifestyleRisks: [],
-      summary: "Erro na análise.", eternalReturnScore: 50, eternalReturnAnalysis: "Indisponível",
+      summary: "Erro na análise (verifique console).", eternalReturnScore: 50, eternalReturnAnalysis: "Indisponível",
       matrixCoordinates: { x: 50, y: 50, quadrantLabel: "Indefinido" }
     };
   }
