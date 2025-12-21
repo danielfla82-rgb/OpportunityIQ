@@ -36,6 +36,8 @@ const saveLocalData = (data: any) => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...current, ...data }));
 };
 
+const isDemo = (userId: string) => userId === 'demo_user';
+
 export const dataService = {
   isConfigured: isSupabaseConfigured,
 
@@ -43,7 +45,7 @@ export const dataService = {
    * Loads all user data
    */
   loadFullData: async (userId: string): Promise<FullUserData> => {
-    if (!isSupabaseConfigured) {
+    if (!isSupabaseConfigured || isDemo(userId)) {
        const data = getLocalData();
        return {
          profile: data.profile || DEFAULT_PROFILE,
@@ -139,7 +141,7 @@ export const dataService = {
    * Saves Profile Data
    */
   saveProfile: async (userId: string, profile: FinancialProfile) => {
-    if (!isSupabaseConfigured) {
+    if (!isSupabaseConfigured || isDemo(userId)) {
         saveLocalData({ profile });
         return { error: null };
     }
@@ -157,7 +159,7 @@ export const dataService = {
    * Saves Compass Data
    */
   saveCompass: async (userId: string, data: YearlyCompassData) => {
-    if (!isSupabaseConfigured) {
+    if (!isSupabaseConfigured || isDemo(userId)) {
         saveLocalData({ yearCompass: data });
         return { error: null };
     }
@@ -179,7 +181,7 @@ export const dataService = {
    * Upserts Life Context
    */
   saveContext: async (userId: string, context: LifeContext, analysis?: ContextAnalysisResult) => {
-    if (!isSupabaseConfigured) {
+    if (!isSupabaseConfigured || isDemo(userId)) {
         saveLocalData({ lifeContext: context, analysisResult: analysis });
         return { error: null };
     }
@@ -205,7 +207,7 @@ export const dataService = {
    * Adds a delegation item
    */
   addDelegation: async (userId: string, item: DelegationItem) => {
-    if (!isSupabaseConfigured) {
+    if (!isSupabaseConfigured || isDemo(userId)) {
         const current = getLocalData();
         const list = current.delegations || [];
         // avoid duplicates by ID if possible, but for array push just push
@@ -231,7 +233,7 @@ export const dataService = {
    * Removes a delegation item
    */
   removeDelegation: async (userId: string, itemId: string) => {
-     if (!isSupabaseConfigured) {
+     if (!isSupabaseConfigured || isDemo(userId)) {
         const current = getLocalData();
         const list = current.delegations || [];
         saveLocalData({ delegations: list.filter((i: DelegationItem) => i.id !== itemId) });
