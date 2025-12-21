@@ -1,90 +1,55 @@
 
-import { GoogleGenAI, Type, Schema } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 import type { Chat } from "@google/genai";
 import { FinancialProfile, CalculatedTHL, SunkCostScenario, ParetoResult, RazorAnalysis, EnergyAuditItem, SkillAnalysis, PreMortemResult, TimeTravelResult, InactionAnalysis, LifestyleAudit, ContextAnalysisResult, NietzscheArchetype } from "../types";
 
-// --- API KEY EXTRACTION STRATEGY ---
-const getApiKey = () => {
-  try {
-    // Priority 1: Vite Environment (Standard for this stack)
-    // @ts-ignore
-    if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_KEY) {
-      // @ts-ignore
-      return import.meta.env.VITE_API_KEY;
-    }
-    // Priority 2: Standard Process Env
-    // @ts-ignore
-    if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
-      // @ts-ignore
-      return process.env.API_KEY;
-    }
-    // Priority 3: Window Polyfill (from index.html)
-    // @ts-ignore
-    if (typeof window !== 'undefined' && window.process && window.process.env && window.process.env.API_KEY) {
-      // @ts-ignore
-      return window.process.env.API_KEY;
-    }
-  } catch (e) {
-    console.warn("Environment variable access failed.", e);
-  }
-  return '';
-};
-
+// --- CLIENT HELPER ---
 const getClient = () => {
-  const key = getApiKey();
-  if (!key || key === 'dummy_key') {
-    console.error("CRITICAL: API Key is missing or invalid. AI features will not work.");
-  }
-  // Initialize even with empty key to allow app to load, requests will fail gracefully later
-  return new GoogleGenAI({ apiKey: key || 'dummy_key' });
+  // Conforme diretrizes: A chave deve vir exclusivamente de process.env.API_KEY
+  // Assume-se que o ambiente (Vite/Next/etc) injeta essa variável corretamente.
+  return new GoogleGenAI({ apiKey: process.env.API_KEY });
 };
 
-// --- HELPER: BULLETPROOF JSON PARSER ---
+// --- JSON PARSER HELPER ---
 const cleanAndParseJSON = (text: string | undefined): any => {
   if (!text) {
-    throw new Error("Gemini API retornou texto vazio.");
+    throw new Error("A resposta da IA veio vazia.");
   }
   
   try {
-    // 1. First attempt: Direct parse
+    // Tentativa 1: Parse direto
     return JSON.parse(text);
   } catch (e1) {
     try {
-      // 2. Second attempt: Extract JSON from Markdown code blocks or messy text
-      let cleaned = text;
+      // Tentativa 2: Extrair de blocos de código markdown ```json ... ```
+      const match = text.match(/```json\s*([\s\S]*?)\s*```/);
+      if (match && match[1]) {
+        return JSON.parse(match[1]);
+      }
       
-      // Find the first '{' or '['
+      // Tentativa 3: Encontrar o primeiro '{' e o último '}'
       const firstBrace = text.indexOf('{');
-      const firstBracket = text.indexOf('[');
-      
-      let start = -1;
-      if (firstBrace !== -1 && firstBracket !== -1) {
-        start = Math.min(firstBrace, firstBracket);
-      } else if (firstBrace !== -1) {
-        start = firstBrace;
-      } else {
-        start = firstBracket;
-      }
-
-      // Find the last '}' or ']'
       const lastBrace = text.lastIndexOf('}');
-      const lastBracket = text.lastIndexOf(']');
-      const end = Math.max(lastBrace, lastBracket);
+      if (firstBrace !== -1 && lastBrace !== -1) {
+        return JSON.parse(text.substring(firstBrace, lastBrace + 1));
+      }
 
-      if (start !== -1 && end !== -1 && end > start) {
-        cleaned = text.substring(start, end + 1);
-        return JSON.parse(cleaned);
+      // Tentativa 4: Encontrar primeiro '[' e último ']' (para arrays)
+      const firstBracket = text.indexOf('[');
+      const lastBracket = text.lastIndexOf(']');
+      if (firstBracket !== -1 && lastBracket !== -1) {
+        return JSON.parse(text.substring(firstBracket, lastBracket + 1));
       }
       
-      throw new Error("Não foi possível encontrar um bloco JSON válido na resposta.");
+      throw new Error("Formato JSON não identificado.");
     } catch (e2) {
-      console.error("JSON Parse Failure. Raw Text:", text);
-      throw e2;
+      console.error("Falha no Parse JSON:", text);
+      throw new Error("Não foi possível processar a resposta da IA (Erro de Formatação).");
     }
   }
 };
 
-// --- CHAT FUNCTIONALITY ---
+// --- CHAT ---
 export const createSpecialistChat = (thl: number, context: string): Chat => {
   const ai = getClient();
   const systemInstruction = `
@@ -101,6 +66,8 @@ export const createSpecialistChat = (thl: number, context: string): Chat => {
   });
 };
 
+// --- ANALYSES ---
+
 export const getSunkCostAnalysis = async (scenario: SunkCostScenario, thl: CalculatedTHL): Promise<string> => {
   const ai = getClient();
   const prompt = `
@@ -115,13 +82,11 @@ export const getSunkCostAnalysis = async (scenario: SunkCostScenario, thl: Calcu
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: prompt,
-      // Removing thinkingConfig to ensure stability
     });
-    return response.text || "Sem resposta do Oráculo.";
+    return response.text || "O Oráculo permaneceu em silêncio.";
   } catch (error: any) {
     console.error("AI Error:", error);
-    if (error.message?.includes('API key')) return "Erro: Chave de API inválida/ausente.";
-    return `Erro na IA: ${error.message || 'Falha de conexão'}`;
+    return `Erro ao consultar o oráculo: ${error.message || 'Falha desconhecida'}`;
   }
 };
 
@@ -147,7 +112,7 @@ export const getDelegationAdvice = async (item: string, cost: number, hoursSaved
     return cleanAndParseJSON(response.text);
   } catch (error) {
     console.error("AI Error:", error);
-    return { text: "Zaratustra não respondeu (Erro API).", archetype: "CAMEL" };
+    return { text: "Falha na conexão com a Sabedoria.", archetype: "CAMEL" };
   }
 };
 
@@ -186,8 +151,7 @@ export const getRefusalScripts = async (request: string): Promise<{diplomatic: s
     });
     return cleanAndParseJSON(response.text);
   } catch (error) {
-    console.error("AI Error:", error);
-    return { diplomatic: "Erro de conexão.", direct: "Erro.", alternative: "Tente novamente." };
+    return { diplomatic: "Erro.", direct: "Erro.", alternative: "Erro." };
   }
 };
 
@@ -212,7 +176,6 @@ export const getParetoAnalysis = async (tasks: string): Promise<ParetoResult> =>
     });
     return cleanAndParseJSON(response.text);
   } catch (error) {
-    console.error("AI Error:", error);
     return { vitalFew: [], trivialMany: [] };
   }
 };
@@ -240,7 +203,6 @@ export const getPhilosophicalAnalysis = async (dilemma: string): Promise<RazorAn
     });
     return cleanAndParseJSON(response.text);
   } catch (error) {
-    console.error("AI Error:", error);
     return { occam: "Erro.", inversion: "Erro.", regret: "Erro.", synthesis: "Erro na API." };
   }
 };
@@ -267,7 +229,6 @@ export const getPreMortemAnalysis = async (goal: string): Promise<PreMortemResul
     });
     return cleanAndParseJSON(response.text);
   } catch (error) {
-    console.error("AI Error:", error);
     return { deathDate: "Futuro", causeOfDeath: "Erro API", autopsyReport: [] };
   }
 };
@@ -282,7 +243,6 @@ export const getFutureSimulations = async (pathA: string, pathB: string): Promis
       contents: prompt,
       config: {
         responseMimeType: "application/json",
-        // Max tokens increased to allow full response
         maxOutputTokens: 4096, 
         responseSchema: {
           type: Type.OBJECT,
@@ -296,7 +256,6 @@ export const getFutureSimulations = async (pathA: string, pathB: string): Promis
     });
     return cleanAndParseJSON(response.text);
   } catch (error) {
-    console.error("AI Error:", error);
     return { pathA: { title: "A", memoir: "Erro", regretLevel: 5 }, pathB: { title: "B", memoir: "Erro", regretLevel: 5 }, synthesis: "Erro" };
   }
 };
@@ -328,7 +287,6 @@ export const getEnergyAudit = async (tasks: string): Promise<EnergyAuditItem[]> 
     });
     return cleanAndParseJSON(response.text);
   } catch (error) {
-    console.error("AI Error:", error);
     return [];
   }
 };
@@ -355,7 +313,6 @@ export const getSkillAnalysis = async (skill: string, currentTHL: number, increa
     });
     return cleanAndParseJSON(response.text);
   } catch (error) {
-    console.error("AI Error:", error);
     return { isRealistic: false, commentary: "Erro ao analisar.", marketRealityCheck: "Verifique conexão." };
   }
 };
@@ -388,7 +345,6 @@ export const getInactionAnalysis = async (decision: string, monthlyCost: number)
       callToAction: data.callToAction || "Aja."
     };
   } catch (error) {
-    console.error("AI Error:", error);
     return { cumulativeCost6Months: 0, cumulativeCost1year: 0, cumulativeCost3years: 0, intangibleCosts: [], callToAction: "Erro" };
   }
 };
@@ -415,13 +371,12 @@ export const getLifestyleAudit = async (item: string, price: number): Promise<Li
     const data = cleanAndParseJSON(response.text);
     const futureValue = price * Math.pow(1.07, 10);
     return {
-      hoursOfLifeLost: 0, // Calculated in UI
+      hoursOfLifeLost: 0,
       futureValueLost: futureValue,
       paretoAlternative: data.paretoAlternative,
       verdict: data.verdict
     };
   } catch (e) {
-    console.error("AI Error:", e);
     return { hoursOfLifeLost: 0, futureValueLost: 0, paretoAlternative: { name: "N/A", priceEstimate: 0, reasoning: "" }, verdict: "WAIT" };
   }
 };
@@ -436,7 +391,6 @@ export const analyzeLifeContext = async (routine: string, assets: string, thl: n
       contents: prompt,
       config: {
         responseMimeType: "application/json",
-        // No thinking budget needed here, strict schema is enough
         responseSchema: {
           type: Type.OBJECT,
           properties: {
@@ -455,9 +409,15 @@ export const analyzeLifeContext = async (routine: string, assets: string, thl: n
   } catch (error: any) {
     console.error("analyzeLifeContext Error:", error);
     const msg = error.message || "Erro desconhecido";
+    
+    let userHint = "";
+    if (msg.includes("API key")) {
+      userHint = " Chave de API inválida.";
+    }
+
     return {
       delegationSuggestions: [], sunkCostSuspects: [], lifestyleRisks: [],
-      summary: `FALHA NA INTELIGÊNCIA: ${msg}. Verifique a Chave de API no arquivo .env (VITE_API_KEY).`,
+      summary: `FALHA NA INTELIGÊNCIA: Não foi possível processar seus dados. ${msg}${userHint}`,
       eternalReturnScore: 0, eternalReturnAnalysis: "Indisponível",
       matrixCoordinates: { x: 50, y: 50, quadrantLabel: "Erro de Conexão" }
     };
