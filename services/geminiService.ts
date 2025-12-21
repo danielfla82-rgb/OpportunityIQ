@@ -5,16 +5,36 @@ import { FinancialProfile, CalculatedTHL, SunkCostScenario, ParetoResult, RazorA
 // Safety check for environment variable access to prevent crash
 const getApiKey = () => {
   try {
+    // 1. Check process.env (Standard Node/Vite define)
+    // @ts-ignore
     if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
+      // @ts-ignore
       return process.env.API_KEY;
     }
+    // 2. Check window.process.env (Our polyfill)
+    // @ts-ignore
+    if (typeof window !== 'undefined' && window.process && window.process.env && window.process.env.API_KEY) {
+      // @ts-ignore
+      return window.process.env.API_KEY;
+    }
+    // 3. Check standard Vite import.meta
+    // @ts-ignore
+    if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_KEY) {
+      // @ts-ignore
+      return import.meta.env.VITE_API_KEY;
+    }
   } catch (e) {
-    console.warn("Could not access process.env");
+    console.warn("Could not access process.env or import.meta.env", e);
   }
   return '';
 };
 
-const getClient = () => new GoogleGenAI({ apiKey: getApiKey() });
+const getClient = () => {
+  const key = getApiKey();
+  // Don't crash if key is missing, just provide a dummy one to instantiate the client. 
+  // Calls will fail gracefully later with 400/403.
+  return new GoogleGenAI({ apiKey: key || 'dummy_key' });
+};
 
 // --- CHAT FUNCTIONALITY ---
 export const createSpecialistChat = (thl: number, context: string) => {

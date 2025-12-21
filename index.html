@@ -13,12 +13,11 @@
     
     <!-- CRITICAL FIX: Polyfill for process.env to prevent crash on Netlify/Vite -->
     <script>
-      window.process = {
-        env: {
-          NODE_ENV: 'production',
-          API_KEY: '' // App reads this safely via geminiService
-        }
-      };
+      window.process = window.process || {};
+      window.process.env = window.process.env || {};
+      window.process.env.NODE_ENV = 'production';
+      // Ensure API_KEY is at least an empty string to prevent undefined access
+      if (!window.process.env.API_KEY) window.process.env.API_KEY = '';
     </script>
 
     <style>
@@ -152,5 +151,8 @@
     <!-- Ambient Gradients -->
     <div style="position: fixed; top: -10%; left: -10%; width: 40%; height: 40%; background: radial-gradient(circle, rgba(16, 185, 129, 0.05) 0%, rgba(0,0,0,0) 70%); border-radius: 50%; pointer-events: none; z-index: 0;"></div>
     <div style="position: fixed; bottom: -10%; right: -10%; width: 50%; height: 50%; background: radial-gradient(circle, rgba(99, 102, 241, 0.05) 0%, rgba(0,0,0,0) 70%); border-radius: 50%; pointer-events: none; z-index: 0;"></div>
+    
+    <!-- MAIN ENTRY POINT FOR VITE - CRITICAL FOR DEPLOYMENT -->
+    <script type="module" src="/index.tsx"></script>
   </body>
 </html>
