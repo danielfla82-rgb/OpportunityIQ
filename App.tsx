@@ -63,11 +63,23 @@ const App: React.FC = () => {
         return;
     }
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session) loadData(session.user.id);
-      else setLoading(false);
-    });
+    const initAuth = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) throw error;
+        setSession(session);
+        if (session) {
+           await loadData(session.user.id);
+        } else {
+           setLoading(false);
+        }
+      } catch (err) {
+        console.error("Auth init error:", err);
+        setLoading(false);
+      }
+    };
+
+    initAuth();
 
     const {
       data: { subscription },

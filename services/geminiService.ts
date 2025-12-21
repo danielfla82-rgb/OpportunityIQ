@@ -2,7 +2,19 @@
 import { GoogleGenAI, Chat } from "@google/genai";
 import { FinancialProfile, CalculatedTHL, SunkCostScenario, ParetoResult, RazorAnalysis, EnergyAuditItem, SkillAnalysis, PreMortemResult, TimeTravelResult, InactionAnalysis, LifestyleAudit, ContextAnalysisResult, NietzscheArchetype } from "../types";
 
-const getClient = () => new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Safety check for environment variable access to prevent crash
+const getApiKey = () => {
+  try {
+    if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
+      return process.env.API_KEY;
+    }
+  } catch (e) {
+    console.warn("Could not access process.env");
+  }
+  return '';
+};
+
+const getClient = () => new GoogleGenAI({ apiKey: getApiKey() });
 
 // --- CHAT FUNCTIONALITY ---
 export const createSpecialistChat = (thl: number, context: string) => {

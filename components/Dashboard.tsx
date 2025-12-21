@@ -28,7 +28,12 @@ const Dashboard: React.FC<Props> = ({ thl, delegations, lifeContext, yearCompass
   const greeting = hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite';
   
   useEffect(() => {
-    getTimeWisdom().then(setQuote);
+    getTimeWisdom()
+      .then(setQuote)
+      .catch(err => {
+         console.warn("AI Wisdom unavailable", err);
+         setQuote("Amor Fati.");
+      });
   }, []);
 
   const chartData = [
