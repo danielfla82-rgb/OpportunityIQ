@@ -92,6 +92,12 @@ const SpecialistChat: React.FC<Props> = ({ thl, lifeContext }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Fix: Reset chat session when vital context changes (THL or Life Context)
+  // This ensures the AI always has the latest user data in its system instruction
+  useEffect(() => {
+    chatSessionRef.current = null;
+  }, [thl.realTHL, lifeContext?.routineDescription, lifeContext?.assetsDescription]);
+
   const handleSend = async () => {
     if (!input.trim()) return;
 
@@ -101,7 +107,7 @@ const SpecialistChat: React.FC<Props> = ({ thl, lifeContext }) => {
     setLoading(true);
 
     try {
-      // Initialize chat only once or if context changes
+      // Initialize chat only once or if context changes (handled by useEffect above)
       if (!chatSessionRef.current) {
          const contextString = lifeContext 
             ? `Rotina: ${lifeContext.routineDescription}. Ativos: ${lifeContext.assetsDescription}` 

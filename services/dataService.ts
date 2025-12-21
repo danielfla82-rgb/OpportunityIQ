@@ -215,6 +215,7 @@ export const dataService = {
         return { error: null };
     }
     const { error } = await supabase.from('delegations').insert({
+      id: item.id, // Explicitly passing the UUID generated in client
       user_id: userId,
       name: item.name,
       cost: item.cost,

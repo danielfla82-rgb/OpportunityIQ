@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { BookOpen, Calculator, Brain, Sword, Compass, MessageSquare } from 'lucide-react';
+import { BookOpen, Calculator, Brain, Sword, Compass, MessageSquare, CloudLightning, Lock } from 'lucide-react';
 
 const Documentation: React.FC = () => {
   return (
@@ -14,6 +14,28 @@ const Documentation: React.FC = () => {
           Manual de filosofia aplicada e metodologia de cálculo do OpportunityIQ.
         </p>
       </div>
+
+      {/* Release Notes */}
+      <section className="bg-emerald-950/20 border border-emerald-500/20 rounded-xl p-6">
+         <h3 className="text-lg font-bold text-emerald-400 flex items-center gap-2 mb-3">
+            <CloudLightning className="w-5 h-5" />
+            Novidades da Versão 5.2 (Cloud Uplink)
+         </h3>
+         <ul className="space-y-2 text-sm text-slate-300">
+            <li className="flex items-start gap-2">
+               <span className="text-emerald-500 font-bold">•</span>
+               <span><strong>Sincronização em Nuvem (Supabase):</strong> Seus dados de THL, Metas e Contexto agora persistem em nuvem criptografada. Acesse de qualquer dispositivo via Link Mágico.</span>
+            </li>
+             <li className="flex items-start gap-2">
+               <span className="text-emerald-500 font-bold">•</span>
+               <span><strong>UUIDs Robustos:</strong> Correção crítica na geração de IDs da Matriz de Delegação para compatibilidade total com Postgres.</span>
+            </li>
+            <li className="flex items-start gap-2">
+               <span className="text-emerald-500 font-bold">•</span>
+               <span><strong>Memória Viva do Chat:</strong> O Especialista Neural agora detecta automaticamente mudanças na sua THL ou Rotina e atualiza o contexto da conversa em tempo real.</span>
+            </li>
+         </ul>
+      </section>
 
       {/* Philosophy Section */}
       <section className="space-y-6">
@@ -107,6 +129,17 @@ const Documentation: React.FC = () => {
               <p className="text-xs text-slate-400">Exercício estoico. Imagine que o projeto já falhou e trabalhe de trás para frente para prevenir as causas.</p>
            </div>
         </div>
+      </section>
+
+      {/* Privacy Note */}
+      <section className="bg-slate-900 p-6 rounded-xl border border-slate-800 mt-8">
+          <div className="flex items-center gap-2 mb-2">
+             <Lock className="w-5 h-5 text-slate-400" />
+             <h4 className="text-slate-200 font-bold text-sm">Privacidade de Dados (RLS)</h4>
+          </div>
+          <p className="text-xs text-slate-500">
+             Com a ativação da nuvem, seus dados estão protegidos por políticas de <strong>Row Level Security</strong>. Apenas o seu usuário autenticado pode ler ou editar suas entradas. A inteligência artificial (Gemini) processa os dados de forma efêmera e não os utiliza para treinamento.
+          </p>
       </section>
     </div>
   );

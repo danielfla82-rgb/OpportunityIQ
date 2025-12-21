@@ -130,6 +130,18 @@ const Row = ({ index, style, data }: ListChildComponentProps<RowData>) => {
   );
 };
 
+// Helper for compatible UUID generation
+const generateUUID = () => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  // Fallback for non-secure contexts
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+};
+
 const DelegationMatrix: React.FC<Props> = ({ thl, delegations, setDelegations }) => {
   const [newItem, setNewItem] = useState<Partial<DelegationItem>>({
     frequency: 'monthly',
@@ -149,7 +161,9 @@ const DelegationMatrix: React.FC<Props> = ({ thl, delegations, setDelegations })
   const handleAdd = async () => {
     if (!newItem.name || !newItem.cost || !newItem.hoursSaved) return;
 
-    const id = Date.now().toString();
+    // FIX: Using proper UUID instead of Date.now() to prevent Postgres Errors
+    const id = generateUUID();
+    
     const item: DelegationItem = {
       id,
       name: newItem.name,

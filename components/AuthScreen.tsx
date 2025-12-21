@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { supabase, isSupabaseConfigured } from '../services/supabaseClient';
-import { Loader2, Mail, ArrowRight, ShieldCheck, Database, HardDrive } from 'lucide-react';
+import { Loader2, Mail, ArrowRight, ShieldCheck, Database, HardDrive, CloudLightning } from 'lucide-react';
 
 interface Props {
   onDemoLogin?: () => void;
@@ -113,8 +113,9 @@ const AuthScreen: React.FC<Props> = ({ onDemoLogin }) => {
            )}
         </div>
         
-        <p className="text-center text-xs text-slate-600 mt-8">
-           v5.1 (Cloud Uplink Active) • Secure Connection
+        <p className="text-center text-xs text-slate-600 mt-8 flex items-center justify-center gap-2">
+           v5.2 <span className="w-1 h-1 bg-slate-600 rounded-full"></span> 
+           <CloudLightning className="w-3 h-3 text-emerald-500" /> Cloud Uplink Active
         </p>
       </div>
     </div>
