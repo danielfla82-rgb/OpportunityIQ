@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { BookOpen, Calculator, Brain, Sword, Compass, MessageSquare, CloudLightning, Lock } from 'lucide-react';
+import { BookOpen, Calculator, Brain, Sword, Compass, MessageSquare, CloudLightning, Lock, Wallet } from 'lucide-react';
 
 const Documentation: React.FC = () => {
   return (
@@ -18,21 +18,25 @@ const Documentation: React.FC = () => {
       {/* Release Notes */}
       <section className="bg-emerald-950/20 border border-emerald-500/20 rounded-xl p-6">
          <h3 className="text-lg font-bold text-emerald-400 flex items-center gap-2 mb-3">
-            <CloudLightning className="w-5 h-5" />
-            Novidades da Versão 5.2 (Cloud Uplink)
+            <Wallet className="w-5 h-5" />
+            Novidades da Versão 5.4 (Wealth Intelligence)
          </h3>
          <ul className="space-y-2 text-sm text-slate-300">
             <li className="flex items-start gap-2">
                <span className="text-emerald-500 font-bold">•</span>
-               <span><strong>Sincronização em Nuvem (Supabase):</strong> Seus dados de THL, Metas e Contexto agora persistem em nuvem criptografada. Acesse de qualquer dispositivo via Link Mágico.</span>
-            </li>
-             <li className="flex items-start gap-2">
-               <span className="text-emerald-500 font-bold">•</span>
-               <span><strong>UUIDs Robustos:</strong> Correção crítica na geração de IDs da Matriz de Delegação para compatibilidade total com Postgres.</span>
+               <span><strong>Patrimônio Inteligente 2.0:</strong> O Inventário agora ordena automaticamente seus ativos por valor, destacando o que realmente importa.</span>
             </li>
             <li className="flex items-start gap-2">
                <span className="text-emerald-500 font-bold">•</span>
-               <span><strong>Memória Viva do Chat:</strong> O Especialista Neural agora detecta automaticamente mudanças na sua THL ou Rotina e atualiza o contexto da conversa em tempo real.</span>
+               <span><strong>Selo Keeper (Estrela):</strong> A IA identifica e marca com uma estrela dourada os ativos que estão se valorizando ou protegendo seu capital contra a inflação.</span>
+            </li>
+             <li className="flex items-start gap-2">
+               <span className="text-emerald-500 font-bold">•</span>
+               <span><strong>Comparativo Histórico:</strong> Nova visualização que compara o Preço de Compra vs. Valor Atual estimado, revelando instantaneamente o ganho ou perda real de capital.</span>
+            </li>
+            <li className="flex items-start gap-2">
+               <span className="text-emerald-500 font-bold">•</span>
+               <span><strong>Sincronização em Nuvem:</strong> Seus dados de THL, Metas e Contexto agora persistem em nuvem criptografada (Supabase).</span>
             </li>
          </ul>
       </section>

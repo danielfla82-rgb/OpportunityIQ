@@ -1,12 +1,10 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
 import type { Chat } from "@google/genai";
-import { FinancialProfile, CalculatedTHL, SunkCostScenario, ParetoResult, RazorAnalysis, EnergyAuditItem, SkillAnalysis, PreMortemResult, TimeTravelResult, InactionAnalysis, LifestyleAudit, ContextAnalysisResult, NietzscheArchetype } from "../types";
+import { FinancialProfile, CalculatedTHL, SunkCostScenario, ParetoResult, RazorAnalysis, EnergyAuditItem, SkillAnalysis, PreMortemResult, TimeTravelResult, InactionAnalysis, LifestyleAudit, ContextAnalysisResult, NietzscheArchetype, AssetItem } from "../types";
 
 // --- CLIENT HELPER ---
 const getClient = () => {
-  // Conforme diretrizes: A chave deve vir exclusivamente de process.env.API_KEY
-  // Assume-se que o ambiente (Vite/Next/etc) injeta essa variável corretamente.
   return new GoogleGenAI({ apiKey: process.env.API_KEY });
 };
 
@@ -17,24 +15,20 @@ const cleanAndParseJSON = (text: string | undefined): any => {
   }
   
   try {
-    // Tentativa 1: Parse direto
     return JSON.parse(text);
   } catch (e1) {
     try {
-      // Tentativa 2: Extrair de blocos de código markdown ```json ... ```
       const match = text.match(/```json\s*([\s\S]*?)\s*```/);
       if (match && match[1]) {
         return JSON.parse(match[1]);
       }
       
-      // Tentativa 3: Encontrar o primeiro '{' e o último '}'
       const firstBrace = text.indexOf('{');
       const lastBrace = text.lastIndexOf('}');
       if (firstBrace !== -1 && lastBrace !== -1) {
         return JSON.parse(text.substring(firstBrace, lastBrace + 1));
       }
 
-      // Tentativa 4: Encontrar primeiro '[' e último ']' (para arrays)
       const firstBracket = text.indexOf('[');
       const lastBracket = text.lastIndexOf(']');
       if (firstBracket !== -1 && lastBracket !== -1) {
@@ -67,6 +61,49 @@ export const createSpecialistChat = (thl: number, context: string): Chat => {
 };
 
 // --- ANALYSES ---
+
+export const analyzeAsset = async (name: string, description: string, value: number, year: number): Promise<AssetItem['aiAnalysis']> => {
+  const ai = getClient();
+  const prompt = `
+    Analise este bem patrimonial: "${name}" (${description}), comprado em ${year} por R$${value}.
+    Estime:
+    1. Valor atual de mercado (Brasil).
+    2. Tendência (Valorizando/Depreciando).
+    3. Custo mensal oculto estimado (manutenção, impostos, depreciação).
+    4. Liquidez (0 a 100, onde 100 é dinheiro na mão).
+    Retorne JSON.
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            currentValueEstimated: { type: Type.NUMBER },
+            depreciationTrend: { type: Type.STRING, enum: ["APPRECIATING", "DEPRECIATING", "STABLE"] },
+            liquidityScore: { type: Type.NUMBER },
+            maintenanceCostMonthlyEstimate: { type: Type.NUMBER },
+            commentary: { type: Type.STRING }
+          }
+        }
+      }
+    });
+    return cleanAndParseJSON(response.text);
+  } catch (error) {
+    console.error("Asset Analysis Error", error);
+    return {
+      currentValueEstimated: value,
+      depreciationTrend: 'STABLE',
+      liquidityScore: 50,
+      maintenanceCostMonthlyEstimate: 0,
+      commentary: "Não foi possível analisar este ativo no momento."
+    };
+  }
+};
 
 export const getSunkCostAnalysis = async (scenario: SunkCostScenario, thl: CalculatedTHL): Promise<string> => {
   const ai = getClient();
@@ -381,9 +418,55 @@ export const getLifestyleAudit = async (item: string, price: number): Promise<Li
   }
 };
 
-export const analyzeLifeContext = async (routine: string, assets: string, thl: number): Promise<ContextAnalysisResult> => {
+export const analyzeLifeContext = async (routine: string, assets: string | AssetItem[], thl: number, sleepHours: number = 7): Promise<ContextAnalysisResult> => {
   const ai = getClient();
-  const prompt = `Analise contexto de vida: Rotina "${routine}", Ativos "${assets}", THL R$${thl}.`;
+  
+  // Format assets for the prompt depending on input type
+  let assetsString = "";
+  if (Array.isArray(assets)) {
+    if (assets.length === 0) {
+      assetsString = "Nenhum ativo significativo cadastrado.";
+    } else {
+      assetsString = assets.map(a => 
+        `- ${a.name} (${a.purchaseYear}): R$${a.purchaseValue}. Análise: ${a.aiAnalysis?.commentary || 'Sem análise'}. Estimativa Mensal de Manutenção: R$${a.aiAnalysis?.maintenanceCostMonthlyEstimate || 0}`
+      ).join('\n');
+    }
+  } else {
+    assetsString = assets;
+  }
+
+  // SYSTEM INSTRUCTION FOR ROBUST MATRIX CALCULATION
+  const prompt = `
+  Você é um Auditor de Eficiência Humana e Filósofo Nietzscheano.
+  Analise friamente os dados abaixo e calcule a Matriz de Potência (X: Autonomia, Y: Eficiência).
+  
+  DADOS DO OPERADOR:
+  - Rotina: "${routine}"
+  - Inventário de Bens (Ativos/Passivos):
+    ${assetsString}
+  
+  - THL (Taxa Horária Líquida): R$${thl.toFixed(2)}/h
+  - Sono Médio: ${sleepHours}h/dia (Impacto Biológico)
+
+  REGRA DE CÁLCULO DA MATRIZ (0-100):
+  
+  EIXO X: AUTONOMIA (Controle sobre o Destino)
+  - 0-30: Escravo da rotina, dívidas altas (veja o inventário), horário fixo rígido.
+  - 31-60: Tem alguma flexibilidade, mas troca tempo por dinheiro diretamente.
+  - 61-80: Possui ativos geradores de renda ou controle total da agenda.
+  - 81-100: Independência Financeira ou capacidade de dizer "Não" para tudo.
+  * Penalize: Bens com alto custo de manutenção (Passivos disfarçados de ativos).
+  * Bonifique: Investimentos líquidos.
+
+  EIXO Y: EFICIÊNCIA (Output por Input - Alavancagem)
+  - 0-30: Ocupado, não produtivo. Tarefas manuais (limpeza, trânsito), distrações.
+  - 31-60: Organizado, mas linear. Trabalha muito para ganhar proporcionalmente.
+  - 61-100: Alta delegação, automação, foco no "Vital Few" (Pareto).
+  * PENALIDADE BIOLÓGICA OBRIGATÓRIA: Se sono < 6h, a Eficiência (Y) NÃO PODE passar de 60.
+
+  SAÍDA ESPERADA (JSON):
+  Seja duro. Não dê notas altas para quem está apenas "ocupado" ou comprando passivos.
+  `;
 
   try {
     const response = await ai.models.generateContent({
@@ -394,13 +477,42 @@ export const analyzeLifeContext = async (routine: string, assets: string, thl: n
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            delegationSuggestions: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { id: { type: Type.STRING }, name: { type: Type.STRING }, cost: { type: Type.NUMBER }, hoursSaved: { type: Type.NUMBER }, frequency: { type: Type.STRING }, category: { type: Type.STRING } } } },
-            sunkCostSuspects: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { title: { type: Type.STRING }, description: { type: Type.STRING } } } },
+            delegationSuggestions: { 
+              type: Type.ARRAY, 
+              items: { 
+                type: Type.OBJECT, 
+                properties: { 
+                  id: { type: Type.STRING }, 
+                  name: { type: Type.STRING }, 
+                  cost: { type: Type.NUMBER }, 
+                  hoursSaved: { type: Type.NUMBER }, 
+                  frequency: { type: Type.STRING }, 
+                  category: { type: Type.STRING } 
+                } 
+              } 
+            },
+            sunkCostSuspects: { 
+              type: Type.ARRAY, 
+              items: { 
+                type: Type.OBJECT, 
+                properties: { 
+                  title: { type: Type.STRING }, 
+                  description: { type: Type.STRING } 
+                } 
+              } 
+            },
             lifestyleRisks: { type: Type.ARRAY, items: { type: Type.STRING } },
             summary: { type: Type.STRING },
             eternalReturnScore: { type: Type.NUMBER },
             eternalReturnAnalysis: { type: Type.STRING },
-            matrixCoordinates: { type: Type.OBJECT, properties: { x: { type: Type.NUMBER }, y: { type: Type.NUMBER }, quadrantLabel: { type: Type.STRING } } }
+            matrixCoordinates: { 
+              type: Type.OBJECT, 
+              properties: { 
+                x: { type: Type.NUMBER }, 
+                y: { type: Type.NUMBER }, 
+                quadrantLabel: { type: Type.STRING } 
+              } 
+            }
           }
         }
       }

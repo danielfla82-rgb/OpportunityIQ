@@ -1,7 +1,8 @@
+
 import React, { useState } from 'react';
 import { EnergyAuditItem } from '../types';
 import { getEnergyAudit } from '../services/geminiService';
-import { Battery, BatteryCharging, Zap, Trash2, AlertTriangle, Loader2 } from 'lucide-react';
+import { Battery, BatteryCharging, Zap, Trash2, AlertTriangle, Loader2, Info } from 'lucide-react';
 
 const EnergyAudit: React.FC = () => {
   const [inputTasks, setInputTasks] = useState("");
@@ -43,7 +44,7 @@ const EnergyAudit: React.FC = () => {
             Matriz de Energia
           </h2>
           <p className="text-slate-400 text-sm mt-1">
-            Gerencie sua energia, não apenas seu tempo. O que você faz bem (Valor) e o que te energiza?
+            Gerencie sua energia, não apenas seu tempo. O que te energiza?
           </p>
         </div>
 
@@ -64,13 +65,23 @@ const EnergyAudit: React.FC = () => {
              {loading ? "Auditando Energia..." : "Classificar Atividades"}
            </button>
         </div>
+
+        <div className="bg-slate-900/30 p-4 rounded-lg border border-slate-800 text-xs text-slate-400 space-y-2">
+           <div className="flex items-center gap-2 font-bold text-slate-300">
+              <Info className="w-4 h-4" /> Entendendo a Matriz
+           </div>
+           <p><strong className="text-emerald-400">Genius Zone:</strong> Alto valor + Energizante. Faça mais disso.</p>
+           <p><strong className="text-blue-400">Armadilha:</strong> Baixo valor + Energizante. Cuidado, é gostoso mas inútil.</p>
+           <p><strong className="text-amber-400">Grind:</strong> Alto valor + Drena. Sistematize ou contrate experts.</p>
+           <p><strong className="text-red-400">Lixo:</strong> Baixo valor + Drena. Elimine imediatamente.</p>
+        </div>
       </div>
 
       <div className="lg:col-span-3">
         {!items.length && !loading && (
            <div className="h-full flex items-center justify-center border-2 border-dashed border-slate-800 rounded-xl bg-slate-900/20 p-8 text-center min-h-[400px]">
              <p className="text-slate-500 max-w-xs">
-               Descubra sua Zona de Genialidade e elimine o que te drena.
+               O segredo não é trabalhar mais horas, é trabalhar nas horas certas.
              </p>
            </div>
         )}

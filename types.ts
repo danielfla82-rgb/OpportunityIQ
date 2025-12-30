@@ -22,7 +22,23 @@ export interface DelegationItem {
   hoursSaved: number;
   frequency: 'once' | 'weekly' | 'monthly';
   category: 'cleaning' | 'transport' | 'admin' | 'software' | 'other';
-  archetype?: NietzscheArchetype; // Added for The Three Metamorphoses
+  archetype?: NietzscheArchetype;
+}
+
+export interface AssetItem {
+  id: string;
+  name: string;
+  description: string;
+  purchaseYear: number;
+  purchaseValue: number;
+  category: 'VEHICLE' | 'REAL_ESTATE' | 'ELECTRONICS' | 'INVESTMENT' | 'OTHER';
+  aiAnalysis?: {
+    currentValueEstimated: number;
+    depreciationTrend: 'APPRECIATING' | 'DEPRECIATING' | 'STABLE';
+    liquidityScore: number; // 0-100 (Hard to sell -> Easy to sell)
+    maintenanceCostMonthlyEstimate: number;
+    commentary: string;
+  };
 }
 
 export interface SunkCostScenario {
@@ -115,9 +131,12 @@ export interface LifestyleAudit {
 
 export interface LifeContext {
   routineDescription: string;
-  assetsDescription: string;
+  assetsDescription: string; // Legacy field, kept for compatibility
+  sleepHours: number;
+  physicalActivityMinutes?: number;
+  studyMinutes?: number;
   lastUpdated: string;
-  eternalReturnScore?: number; // 0-100 (Nietzschean Metric)
+  eternalReturnScore?: number;
   eternalReturnText?: string;
 }
 
@@ -134,7 +153,7 @@ export interface ContextAnalysisResult {
   summary: string;
   eternalReturnScore?: number;
   eternalReturnAnalysis?: string;
-  matrixCoordinates?: AnalysisCoordinates; // Added for X/Y Chart
+  matrixCoordinates?: AnalysisCoordinates;
 }
 
 export interface YearlyCompassData {
@@ -152,6 +171,7 @@ export enum AppView {
   DASHBOARD = 'DASHBOARD',
   THL_CALCULATOR = 'THL_CALCULATOR',
   LIFE_CONTEXT = 'LIFE_CONTEXT',
+  ASSET_INVENTORY = 'ASSET_INVENTORY',
   DIAGNOSIS = 'DIAGNOSIS',
   YEARLY_GOALS = 'YEARLY_GOALS',
   DELEGATION = 'DELEGATION',

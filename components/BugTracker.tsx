@@ -25,6 +25,7 @@ const BugTracker: React.FC<Props> = ({ profile, thl }) => {
     } catch(e) {}
 
     const sysInfo = {
+      appVersion: "v5.4.0",
       userAgent: navigator.userAgent,
       screen: `${window.screen.width}x${window.screen.height}`,
       time: new Date().toISOString(),
@@ -58,7 +59,7 @@ ${JSON.stringify(sysInfo, null, 2)}
   };
 
   const handleEmail = () => {
-    const subject = encodeURIComponent("Bug Report: OpportunityIQ");
+    const subject = encodeURIComponent("Bug Report: OpportunityIQ v5.4.0");
     const body = encodeURIComponent(generateReport());
     window.open(`mailto:support@opportunityiq.app?subject=${subject}&body=${body}`);
   };

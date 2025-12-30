@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './services/supabaseClient';
 import { dataService } from './services/dataService';
-import { FinancialProfile, CalculatedTHL, DelegationItem, AppView, LifeContext, ContextAnalysisResult, YearlyCompassData } from './types';
+import { FinancialProfile, CalculatedTHL, DelegationItem, AppView, LifeContext, ContextAnalysisResult, YearlyCompassData, AssetItem } from './types';
 import AuthScreen from './components/AuthScreen';
 import THLCalculator from './components/THLCalculator';
 import DelegationMatrix from './components/DelegationMatrix';
@@ -17,12 +17,13 @@ import SkillROICalculator from './components/SkillROICalculator';
 import InactionCalculator from './components/InactionCalculator';
 import LifestyleInflator from './components/LifestyleInflator';
 import LifeContextBuilder from './components/LifeContextBuilder';
+import AssetInventory from './components/AssetInventory'; // NEW
 import DiagnosisReport from './components/DiagnosisReport';
 import Documentation from './components/Documentation';
 import BugTracker from './components/BugTracker';
 import SpecialistChat from './components/SpecialistChat';
 import YearlyGoals from './components/YearlyGoals';
-import { LayoutDashboard, Calculator, ListTodo, BrainCircuit, ShieldAlert, Target, Timer, Scale, Battery, TrendingUp, Snowflake, ShoppingBag, Menu, X, ChevronRight, BookUser, FileText, BookOpen, Bug, MessageSquare, Compass, LogOut, Loader2, Database } from 'lucide-react';
+import { LayoutDashboard, Calculator, ListTodo, BrainCircuit, ShieldAlert, Target, Timer, Scale, Battery, TrendingUp, Snowflake, ShoppingBag, Menu, X, ChevronRight, BookUser, FileText, BookOpen, Bug, MessageSquare, Compass, LogOut, Loader2, Database, Wallet, Zap } from 'lucide-react';
 
 const App: React.FC = () => {
   const [session, setSession] = useState<any>(null);
@@ -46,6 +47,7 @@ const App: React.FC = () => {
   });
 
   const [delegations, setDelegations] = useState<DelegationItem[]>([]);
+  const [assets, setAssets] = useState<AssetItem[]>([]); // NEW STATE
   const [lifeContext, setLifeContext] = useState<LifeContext | null>(null);
   const [analysisResult, setAnalysisResult] = useState<ContextAnalysisResult | null>(null);
   const [yearCompass, setYearCompass] = useState<YearlyCompassData>({
@@ -104,6 +106,7 @@ const App: React.FC = () => {
       const data = await dataService.loadFullData(userId);
       setProfile(data.profile);
       setDelegations(data.delegations);
+      setAssets(data.assets); // NEW
       setLifeContext(data.lifeContext);
       setAnalysisResult(data.analysisResult);
       setYearCompass(data.yearCompass);
@@ -193,6 +196,21 @@ const App: React.FC = () => {
        return newList;
      });
   };
+  
+  const handleSetAssets = (action: React.SetStateAction<AssetItem[]>) => {
+     setAssets(prev => {
+       const newList = typeof action === 'function' ? action(prev) : action;
+       
+       if (session?.user?.id) {
+          const added = newList.filter(n => !prev.find(p => p.id === n.id));
+          added.forEach(item => dataService.addAsset(session.user.id, item));
+          
+          const removed = prev.filter(p => !newList.find(n => n.id === p.id));
+          removed.forEach(item => dataService.removeAsset(session.user.id, item.id));
+       }
+       return newList;
+     });
+  };
 
   if (!session) {
     return <AuthScreen onDemoLogin={handleDemoLogin} />;
@@ -227,6 +245,7 @@ const App: React.FC = () => {
     {
       title: 'Financeiro & Carreira',
       items: [
+        { id: AppView.ASSET_INVENTORY, label: 'Inventário de Bens', icon: Wallet }, // New
         { id: AppView.DELEGATION, label: 'Matriz de Delegação', icon: ListTodo },
         { id: AppView.SKILL_ROI, label: 'Alavancagem (ROI)', icon: TrendingUp },
         { id: AppView.LIFESTYLE_INFLATOR, label: 'Corretor Hedônico', icon: ShoppingBag },
@@ -253,7 +272,7 @@ const App: React.FC = () => {
     }
   ];
 
-  const currentViewLabel = navGroups.flatMap(g => g.items).find(i => i.id === view)?.label || 'OpportunityIQ';
+  const currentViewLabel = navGroups.flatMap(g => g.items).find(i => i.id === view)?.label || 'Zeus';
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row overflow-hidden font-sans">
@@ -261,7 +280,9 @@ const App: React.FC = () => {
       {/* Mobile Header */}
       <div className="md:hidden p-4 flex justify-between items-center sticky top-0 z-50 border-b border-white/5 bg-slate-950/85 backdrop-blur-md">
          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-lg flex items-center justify-center font-serif font-bold text-slate-900 shadow-lg shadow-emerald-500/20">O</div>
+            <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-lg flex items-center justify-center font-serif font-bold text-slate-900 shadow-lg shadow-emerald-500/20">
+              <Zap className="w-5 h-5 text-white" />
+            </div>
             <span className="font-serif text-lg tracking-tight text-white font-medium">{currentViewLabel}</span>
          </div>
          <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="text-slate-300 p-2 hover:bg-slate-800 rounded-lg transition-colors">
@@ -276,9 +297,11 @@ const App: React.FC = () => {
       `}>
         <div className="p-8 hidden md:block">
           <div className="flex items-center gap-3">
-             <div className="w-10 h-10 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-xl shadow-[0_0_15px_rgba(16,185,129,0.3)] flex items-center justify-center font-serif font-bold text-xl text-white">O</div>
+             <div className="w-10 h-10 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-xl shadow-[0_0_15px_rgba(16,185,129,0.3)] flex items-center justify-center font-serif font-bold text-xl text-white">
+               <Zap className="w-6 h-6" />
+             </div>
              <div>
-               <h1 className="text-xl font-serif text-white tracking-tight leading-none">OpportunityIQ</h1>
+               <h1 className="text-xl font-serif text-white tracking-tight leading-none">Zeus</h1>
                <p className="text-[10px] text-slate-400 mt-1 uppercase tracking-[0.2em] font-medium">Decision OS</p>
              </div>
           </div>
@@ -360,7 +383,17 @@ const App: React.FC = () => {
                <LifeContextBuilder 
                  thl={thlStats} 
                  initialContext={lifeContext}
-                 onAnalysisComplete={handleContextAnalysisComplete} 
+                 assets={assets} // Pass assets here
+                 onAnalysisComplete={handleContextAnalysisComplete}
+                 onNavigate={setView}
+               />
+            )}
+            
+            {view === AppView.ASSET_INVENTORY && (
+               <AssetInventory 
+                 assets={assets}
+                 setAssets={handleSetAssets}
+                 onBack={() => setView(AppView.LIFE_CONTEXT)}
                />
             )}
 

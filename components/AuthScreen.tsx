@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { supabase, isSupabaseConfigured } from '../services/supabaseClient';
-import { Loader2, Mail, ArrowRight, ShieldCheck, Database, HardDrive, CloudLightning, CloudOff, AlertCircle, Lock, LogIn, UserPlus } from 'lucide-react';
+import { Loader2, Mail, ArrowRight, ShieldCheck, Database, HardDrive, CloudLightning, CloudOff, AlertCircle, Lock, LogIn, UserPlus, Zap } from 'lucide-react';
 
 interface Props {
   onDemoLogin?: () => void;
@@ -95,10 +95,10 @@ const AuthScreen: React.FC<Props> = ({ onDemoLogin }) => {
       <div className="relative z-10 w-full max-w-md">
         <div className="text-center mb-8">
            <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-emerald-800 rounded-2xl flex items-center justify-center font-serif font-bold text-3xl text-slate-900 mx-auto mb-6 shadow-[0_0_30px_rgba(16,185,129,0.3)]">
-             O
+             <Zap className="w-8 h-8 text-white" />
            </div>
-           <h1 className="text-3xl font-serif text-white mb-2">OpportunityIQ</h1>
-           <p className="text-slate-400 text-sm">Identifique-se, Operador.</p>
+           <h1 className="text-3xl font-serif text-white mb-2">Zeus</h1>
+           <p className="text-slate-400 text-sm">Plataforma organizadora de tempo e patrimônio</p>
         </div>
 
         <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-800 rounded-2xl p-8 shadow-2xl">
@@ -239,7 +239,7 @@ const AuthScreen: React.FC<Props> = ({ onDemoLogin }) => {
         </div>
         
         <p className="text-center text-xs text-slate-600 mt-8 flex items-center justify-center gap-2">
-           v5.3.1 <span className="w-1 h-1 bg-slate-600 rounded-full"></span> 
+           v5.4.0 <span className="w-1 h-1 bg-slate-600 rounded-full"></span> 
            {isSupabaseConfigured ? (
              <span className="flex items-center gap-1 text-emerald-500/80"><CloudLightning className="w-3 h-3" /> Online</span>
            ) : (

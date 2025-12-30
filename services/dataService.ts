@@ -1,10 +1,11 @@
 
 import { supabase, isSupabaseConfigured } from './supabaseClient';
-import { FinancialProfile, DelegationItem, LifeContext, YearlyCompassData, ContextAnalysisResult, STORAGE_KEY } from '../types';
+import { FinancialProfile, DelegationItem, LifeContext, YearlyCompassData, ContextAnalysisResult, AssetItem, STORAGE_KEY } from '../types';
 
 export interface FullUserData {
   profile: FinancialProfile;
   delegations: DelegationItem[];
+  assets: AssetItem[]; // NEW
   lifeContext: LifeContext | null;
   analysisResult: ContextAnalysisResult | null;
   yearCompass: YearlyCompassData;
@@ -50,6 +51,7 @@ export const dataService = {
        return {
          profile: data.profile || DEFAULT_PROFILE,
          delegations: data.delegations || [],
+         assets: data.assets || [],
          lifeContext: data.lifeContext || null,
          analysisResult: data.analysisResult || null,
          yearCompass: data.yearCompass || DEFAULT_COMPASS
@@ -68,15 +70,21 @@ export const dataService = {
       .from('delegations')
       .select('*')
       .eq('user_id', userId);
+      
+    // 3. Assets (NEW)
+    const { data: assetsData } = await supabase
+      .from('assets')
+      .select('*')
+      .eq('user_id', userId);
 
-    // 3. Life Context
+    // 4. Life Context
     const { data: contextData } = await supabase
       .from('life_contexts')
       .select('*')
       .eq('user_id', userId)
       .single();
 
-    // 4. Year Compass
+    // 5. Year Compass
     const { data: compassData } = await supabase
       .from('year_compass')
       .select('*')
@@ -100,10 +108,29 @@ export const dataService = {
       category: d.category,
       archetype: d.archetype
     }));
+    
+    const assets: AssetItem[] = (assetsData || []).map((a: any) => ({
+       id: a.id,
+       name: a.name,
+       description: a.description,
+       purchaseYear: a.purchase_year,
+       purchaseValue: Number(a.purchase_value),
+       category: a.category,
+       aiAnalysis: a.current_value_est ? {
+          currentValueEstimated: Number(a.current_value_est),
+          depreciationTrend: a.appreciation_rate as any,
+          liquidityScore: 50, // Default if not saved individually
+          maintenanceCostMonthlyEstimate: 0, // Default if not saved
+          commentary: a.liabilities_text
+       } : undefined
+    }));
 
     const lifeContext: LifeContext | null = contextData ? {
       routineDescription: contextData.routine_description,
       assetsDescription: contextData.assets_description,
+      sleepHours: Number(contextData.sleep_hours || 7),
+      physicalActivityMinutes: Number(contextData.physical_activity_minutes || 0),
+      studyMinutes: Number(contextData.study_minutes || 0),
       lastUpdated: contextData.last_updated,
       eternalReturnScore: contextData.eternal_return_score,
       eternalReturnText: contextData.eternal_return_text
@@ -134,7 +161,7 @@ export const dataService = {
       }
     } : DEFAULT_COMPASS;
 
-    return { profile, delegations, lifeContext, analysisResult, yearCompass };
+    return { profile, delegations, assets, lifeContext, analysisResult, yearCompass };
   },
 
   /**
@@ -189,6 +216,9 @@ export const dataService = {
       user_id: userId,
       routine_description: context.routineDescription,
       assets_description: context.assetsDescription,
+      sleep_hours: context.sleepHours,
+      physical_activity_minutes: context.physicalActivityMinutes,
+      study_minutes: context.studyMinutes,
       eternal_return_score: context.eternalReturnScore,
       eternal_return_text: context.eternalReturnText,
       last_updated: new Date().toISOString()
@@ -210,14 +240,13 @@ export const dataService = {
     if (!isSupabaseConfigured || isDemo(userId)) {
         const current = getLocalData();
         const list = current.delegations || [];
-        // avoid duplicates by ID if possible, but for array push just push
         if (!list.find((i: DelegationItem) => i.id === item.id)) {
             saveLocalData({ delegations: [...list, item] });
         }
         return { error: null };
     }
     const { error } = await supabase.from('delegations').insert({
-      id: item.id, // Explicitly passing the UUID generated in client
+      id: item.id,
       user_id: userId,
       name: item.name,
       cost: item.cost,
@@ -240,5 +269,46 @@ export const dataService = {
         return { error: null };
      }
      return supabase.from('delegations').delete().eq('id', itemId).eq('user_id', userId);
+  },
+  
+  /**
+   * Adds an Asset Item
+   */
+  addAsset: async (userId: string, item: AssetItem) => {
+    if (!isSupabaseConfigured || isDemo(userId)) {
+        const current = getLocalData();
+        const list = current.assets || [];
+        if (!list.find((i: AssetItem) => i.id === item.id)) {
+            saveLocalData({ assets: [...list, item] });
+        }
+        return { error: null };
+    }
+    const { error } = await supabase.from('assets').insert({
+      id: item.id,
+      user_id: userId,
+      name: item.name,
+      description: item.description,
+      purchase_year: item.purchaseYear,
+      purchase_value: item.purchaseValue,
+      category: item.category,
+      // Flattening AI analysis for SQL storage
+      current_value_est: item.aiAnalysis?.currentValueEstimated,
+      appreciation_rate: item.aiAnalysis?.depreciationTrend,
+      liabilities_text: item.aiAnalysis?.commentary
+    });
+    return error;
+  },
+  
+  /**
+   * Removes an Asset Item
+   */
+  removeAsset: async (userId: string, itemId: string) => {
+     if (!isSupabaseConfigured || isDemo(userId)) {
+        const current = getLocalData();
+        const list = current.assets || [];
+        saveLocalData({ assets: list.filter((i: AssetItem) => i.id !== itemId) });
+        return { error: null };
+     }
+     return supabase.from('assets').delete().eq('id', itemId).eq('user_id', userId);
   }
 };

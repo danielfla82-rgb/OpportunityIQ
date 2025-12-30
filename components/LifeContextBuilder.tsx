@@ -1,35 +1,46 @@
+
 import React, { useState, useEffect } from 'react';
-import { LifeContext, ContextAnalysisResult, CalculatedTHL } from '../types';
+import { LifeContext, ContextAnalysisResult, CalculatedTHL, AssetItem, AppView } from '../types';
 import { analyzeLifeContext } from '../services/geminiService';
-import { Book, Car, Clock, Sparkles, Loader2, CheckCircle2, AlertTriangle, Infinity } from 'lucide-react';
+import { Book, Car, Clock, Sparkles, Loader2, CheckCircle2, AlertTriangle, Moon, Sun, Dumbbell, Brain, Wallet, ChevronRight } from 'lucide-react';
 
 interface Props {
   thl: CalculatedTHL;
   initialContext: LifeContext | null;
+  assets: AssetItem[]; // NEW prop
   onAnalysisComplete: (result: ContextAnalysisResult, context: LifeContext) => void;
+  onNavigate: (view: AppView) => void; // For linking to Inventory
 }
 
-const LifeContextBuilder: React.FC<Props> = ({ thl, initialContext, onAnalysisComplete }) => {
+const LifeContextBuilder: React.FC<Props> = ({ thl, initialContext, assets, onAnalysisComplete, onNavigate }) => {
   const [routine, setRoutine] = useState(initialContext?.routineDescription || "");
-  const [assets, setAssets] = useState(initialContext?.assetsDescription || "");
+  const [sleepHours, setSleepHours] = useState(initialContext?.sleepHours || 7);
+  const [physicalMinutes, setPhysicalMinutes] = useState(initialContext?.physicalActivityMinutes || 0);
+  const [studyMinutes, setStudyMinutes] = useState(initialContext?.studyMinutes || 0);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (initialContext) {
         setRoutine(initialContext.routineDescription);
-        setAssets(initialContext.assetsDescription);
+        setSleepHours(initialContext.sleepHours || 7);
+        setPhysicalMinutes(initialContext.physicalActivityMinutes || 0);
+        setStudyMinutes(initialContext.studyMinutes || 0);
     }
   }, [initialContext]);
 
   const handleAnalyze = async () => {
-    if (!routine.trim() && !assets.trim()) return;
+    if (!routine.trim()) return;
     
     setLoading(true);
-    const result = await analyzeLifeContext(routine, assets, thl.realTHL);
+    // Pass entire assets array to analysis service
+    const result = await analyzeLifeContext(routine, assets, thl.realTHL, sleepHours);
     
     const contextData: LifeContext = {
         routineDescription: routine,
-        assetsDescription: assets,
+        assetsDescription: `Inventário Atualizado: ${assets.length} itens.`, // Placeholder for legacy compatibility
+        sleepHours: sleepHours,
+        physicalActivityMinutes: physicalMinutes,
+        studyMinutes: studyMinutes,
         lastUpdated: new Date().toISOString(),
         eternalReturnScore: result.eternalReturnScore,
         eternalReturnText: result.eternalReturnAnalysis
@@ -38,6 +49,18 @@ const LifeContextBuilder: React.FC<Props> = ({ thl, initialContext, onAnalysisCo
     onAnalysisComplete(result, contextData);
     setLoading(false);
   };
+
+  // 24h Calculation for "Free Time" preview
+  const workHoursDaily = (thl.monthlyTotalHours - thl.monthlyCommuteHours) / 30;
+  const commuteHoursDaily = thl.monthlyCommuteHours / 30;
+  const physicalHours = physicalMinutes / 60;
+  const studyHours = studyMinutes / 60;
+  const committedTime = sleepHours + workHoursDaily + commuteHoursDaily + physicalHours + studyHours;
+  const trueFreeTimeDaily = Math.max(0, 24 - committedTime);
+
+  // Asset Summary
+  const netWorth = assets.reduce((acc, curr) => acc + (curr.aiAnalysis?.currentValueEstimated || curr.purchaseValue), 0);
+  const liabilities = assets.reduce((acc, curr) => acc + (curr.aiAnalysis?.maintenanceCostMonthlyEstimate || 0), 0);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 animate-fade-in pb-12">
@@ -72,20 +95,115 @@ const LifeContextBuilder: React.FC<Props> = ({ thl, initialContext, onAnalysisCo
             />
          </div>
 
+         {/* Asset Integration Card */}
          <div className="glass-panel p-6 rounded-xl border-l-4 border-emerald-500">
-            <div className="flex items-center gap-2 mb-4">
-               <Car className="w-5 h-5 text-emerald-400" />
-               <h3 className="font-bold text-slate-200 uppercase tracking-widest text-sm">Inventário (Bens & Passivos)</h3>
+            <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Wallet className="w-5 h-5 text-emerald-400" />
+                  <h3 className="font-bold text-slate-200 uppercase tracking-widest text-sm">Inventário de Bens</h3>
+                </div>
+                {assets.length > 0 && (
+                   <span className="text-xs font-mono text-emerald-400 bg-emerald-950/30 px-2 py-0.5 rounded border border-emerald-900">
+                      R$ {netWorth.toLocaleString()}
+                   </span>
+                )}
             </div>
-            <p className="text-xs text-slate-500 mb-3">
-               O que você possui que custa dinheiro ou tempo? Carros, casa de praia, assinaturas, equipamentos caros parados.
-            </p>
-            <textarea 
-               className="w-full bg-slate-950/50 border border-slate-700 rounded-lg p-4 text-slate-200 h-48 focus:ring-1 focus:ring-emerald-500 outline-none resize-none"
-               placeholder="Ex: Tenho um SUV financiado que gasta muito. Assino 5 streamings mas só vejo 1. Tenho uma esteira que virou cabide."
-               value={assets}
-               onChange={(e) => setAssets(e.target.value)}
-            />
+            
+            {assets.length === 0 ? (
+               <div className="text-center py-6 bg-slate-950/30 rounded-lg border border-dashed border-slate-800">
+                  <p className="text-xs text-slate-500 mb-3">
+                     Você ainda não cadastrou seus bens (carro, imóveis, eletrônicos).
+                     O cadastro permite que a IA calcule custos de manutenção ocultos.
+                  </p>
+                  <button 
+                     onClick={() => onNavigate(AppView.ASSET_INVENTORY)}
+                     className="text-sm bg-emerald-900/30 text-emerald-300 px-4 py-2 rounded hover:bg-emerald-900/50 transition-colors flex items-center gap-2 mx-auto"
+                  >
+                     Cadastrar Bens Agora <ChevronRight className="w-4 h-4" />
+                  </button>
+               </div>
+            ) : (
+               <div className="bg-slate-950/30 rounded-lg p-4 border border-slate-800">
+                  <div className="flex justify-between items-center mb-2">
+                     <span className="text-xs text-slate-400">{assets.length} Itens Cadastrados</span>
+                     <span className="text-xs text-red-400 flex items-center gap-1"><AlertTriangle className="w-3 h-3"/> Passivo: R${liabilities}/mês</span>
+                  </div>
+                  <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+                     {assets.slice(0, 3).map(a => (
+                        <span key={a.id} className="text-[10px] bg-slate-900 border border-slate-700 px-2 py-1 rounded text-slate-300 whitespace-nowrap">
+                           {a.name}
+                        </span>
+                     ))}
+                     {assets.length > 3 && <span className="text-[10px] text-slate-500 self-center">+{assets.length - 3}</span>}
+                  </div>
+                  <button 
+                     onClick={() => onNavigate(AppView.ASSET_INVENTORY)}
+                     className="w-full mt-3 text-xs bg-slate-900 hover:bg-slate-800 text-slate-300 py-2 rounded border border-slate-700 transition-colors"
+                  >
+                     Gerenciar Inventário
+                  </button>
+               </div>
+            )}
+         </div>
+
+         {/* Bio-Rhythm & Growth */}
+         <div className="glass-panel p-6 rounded-xl border-l-4 border-blue-500 space-y-6">
+            <div className="flex items-center gap-2 mb-2">
+               <Moon className="w-5 h-5 text-blue-400" />
+               <h3 className="font-bold text-slate-200 uppercase tracking-widest text-sm">Investimento em Si Mesmo (Diário)</h3>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+               {/* Sleep */}
+               <div>
+                  <label className="text-[10px] text-slate-500 uppercase font-bold block mb-2">Sono Médio (Horas)</label>
+                  <div className="flex items-center gap-2">
+                     <input 
+                        type="number" 
+                        min="4" max="12" step="0.5"
+                        value={sleepHours}
+                        onChange={(e) => setSleepHours(Number(e.target.value))}
+                        className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-center text-white focus:border-blue-500 outline-none"
+                     />
+                  </div>
+               </div>
+
+               {/* Physical Activity */}
+               <div>
+                  <label className="text-[10px] text-slate-500 uppercase font-bold block mb-2 flex items-center gap-1"><Dumbbell className="w-3 h-3"/> Treino (Min)</label>
+                  <div className="flex items-center gap-2">
+                     <input 
+                        type="number" 
+                        min="0" max="300" step="15"
+                        value={physicalMinutes}
+                        onChange={(e) => setPhysicalMinutes(Number(e.target.value))}
+                        className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-center text-white focus:border-emerald-500 outline-none"
+                     />
+                  </div>
+               </div>
+
+                {/* Study */}
+                <div>
+                  <label className="text-[10px] text-slate-500 uppercase font-bold block mb-2 flex items-center gap-1"><Brain className="w-3 h-3"/> Estudo (Min)</label>
+                  <div className="flex items-center gap-2">
+                     <input 
+                        type="number" 
+                        min="0" max="300" step="15"
+                        value={studyMinutes}
+                        onChange={(e) => setStudyMinutes(Number(e.target.value))}
+                        className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-center text-white focus:border-amber-500 outline-none"
+                     />
+                  </div>
+               </div>
+            </div>
+
+            <div className="pt-4 border-t border-slate-800 flex items-center justify-between">
+                <span className="text-xs text-slate-500">Soberania Restante (Tempo Livre Real)</span>
+                <div className="text-sm font-bold text-indigo-400 flex items-center gap-2 bg-indigo-950/30 px-3 py-1.5 rounded border border-indigo-500/20">
+                   <Sun className="w-4 h-4" />
+                   {trueFreeTimeDaily.toFixed(1)}h / dia
+                </div>
+            </div>
          </div>
       </div>
 
@@ -111,24 +229,24 @@ const LifeContextBuilder: React.FC<Props> = ({ thl, initialContext, onAnalysisCo
                      <AlertTriangle className="w-4 h-4" />
                   </div>
                   <div>
-                     <strong className="text-slate-200 block text-sm">Detectar Custos Irrecuperáveis</strong>
-                     <span className="text-slate-500 text-xs">Vai alertar sobre aquele projeto ou bem que está drenando sua vida.</span>
+                     <strong className="text-slate-200 block text-sm">Analisar Passivos Ocultos</strong>
+                     <span className="text-slate-500 text-xs">Vai cruzar seu inventário de bens com sua renda para detectar fragilidades financeiras.</span>
                   </div>
                </li>
                <li className="flex items-start gap-3">
-                  <div className="bg-purple-500/20 p-1.5 rounded text-purple-400 mt-0.5">
-                     <Infinity className="w-4 h-4" />
+                  <div className="bg-blue-500/20 p-1.5 rounded text-blue-400 mt-0.5">
+                     <Moon className="w-4 h-4" />
                   </div>
                   <div>
-                     <strong className="text-slate-200 block text-sm">Teste do Eterno Retorno</strong>
-                     <span className="text-slate-500 text-xs">Calcularemos seu índice de aceitação da vida (0-100).</span>
+                     <strong className="text-slate-200 block text-sm">Cálculo de Tempo Líquido (24h)</strong>
+                     <span className="text-slate-500 text-xs">Vai cruzar seu sono, trabalho, treino e estudo para revelar sua verdadeira liberdade diária.</span>
                   </div>
                </li>
             </ul>
 
             <button 
                onClick={handleAnalyze}
-               disabled={loading || (!routine && !assets)}
+               disabled={loading || !routine}
                className="w-full mt-8 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-3 relative z-10"
             >
                {loading ? <Loader2 className="animate-spin w-6 h-6" /> : <Sparkles className="w-6 h-6" />}

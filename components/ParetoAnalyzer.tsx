@@ -1,7 +1,8 @@
+
 import React, { useState } from 'react';
 import { ParetoResult } from '../types';
 import { getParetoAnalysis } from '../services/geminiService';
-import { ArrowDownAZ, Star, Trash2, User, Bot, Loader2, Target } from 'lucide-react';
+import { ArrowDownAZ, Star, Trash2, User, Bot, Loader2, Target, Info } from 'lucide-react';
 
 const ParetoAnalyzer: React.FC = () => {
   const [tasks, setTasks] = useState("");
@@ -44,12 +45,18 @@ const ParetoAnalyzer: React.FC = () => {
             Analisador de Pareto
           </h2>
           <p className="text-slate-400 text-sm mt-1">
-            20% das suas ações geram 80% dos resultados. Liste tudo o que você precisa fazer e a IA vai separar o ouro do cascalho.
+            20% das suas ações geram 80% dos resultados. Liste tudo e a IA separará o ouro do cascalho.
           </p>
         </div>
 
         <div className="bg-slate-900/50 p-6 rounded-xl border border-slate-800 flex flex-col h-[500px]">
-          <label className="block text-xs text-slate-500 uppercase tracking-widest mb-3">Lista de Tarefas (Uma por linha)</label>
+          <div className="flex justify-between items-center mb-3">
+             <label className="block text-xs text-slate-500 uppercase tracking-widest">Lista de Tarefas</label>
+             <div className="text-[10px] bg-emerald-950/30 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/20 flex items-center gap-1">
+                <Info className="w-3 h-3" /> Uma por linha
+             </div>
+          </div>
+          
           <textarea 
             className="flex-1 w-full bg-slate-950 border border-slate-700 rounded-lg p-4 text-slate-200 focus:ring-1 focus:ring-emerald-500 outline-none resize-none"
             placeholder={`Ex:\n- Fazer relatório mensal\n- Responder e-mail do cliente X\n- Comprar café\n- Planejamento estratégico 2025\n- Reunião de alinhamento semanal`}
@@ -72,9 +79,13 @@ const ParetoAnalyzer: React.FC = () => {
         {!result && !loading && (
            <div className="h-full flex flex-col items-center justify-center border-2 border-dashed border-slate-800 rounded-xl bg-slate-900/20 p-8 text-center min-h-[500px]">
              <Target className="w-16 h-16 text-slate-700 mb-4" />
-             <p className="text-slate-500 max-w-xs">
+             <p className="text-slate-500 max-w-xs mb-6">
                A maioria das coisas não importa. Descubra o que realmente move a agulha.
              </p>
+             <div className="bg-slate-800/50 p-4 rounded-lg text-sm text-left max-w-sm border border-slate-700">
+                <strong className="text-emerald-400 block mb-2">Dica Pro:</strong>
+                <p className="text-slate-400">Misture tarefas operacionais ("responder emails") com estratégicas ("definir metas") para ver o contraste real.</p>
+             </div>
            </div>
         )}
 

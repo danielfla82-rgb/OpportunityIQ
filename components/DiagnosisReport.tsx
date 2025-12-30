@@ -1,8 +1,8 @@
 
 import React, { useState } from 'react';
 import { ContextAnalysisResult, CalculatedTHL, AppView, FinancialProfile } from '../types';
-import { Activity, AlertTriangle, ArrowRight, CheckCircle2, Clock, DollarSign, TrendingUp, ShieldAlert, FileText, Download, BrainCircuit, ShoppingBag, Infinity, Target, BarChart2, Info, X } from 'lucide-react';
-import { ScatterChart, Scatter, XAxis, YAxis, ZAxis, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine, Cell, AreaChart, Area, ComposedChart } from 'recharts';
+import { Activity, AlertTriangle, CheckCircle2, Clock, DollarSign, TrendingUp, ShieldAlert, FileText, Download, BrainCircuit, ShoppingBag, Target, BarChart2, Info, X, Zap, Crown, Package, Sword, Ghost, MapPin, Calendar, Globe } from 'lucide-react';
+import { ScatterChart, Scatter, XAxis, YAxis, ZAxis, ResponsiveContainer, ReferenceLine, Cell, Area, ComposedChart } from 'recharts';
 
 interface Props {
   result: ContextAnalysisResult;
@@ -26,18 +26,100 @@ const DiagnosisReport: React.FC<Props> = ({ result, thl, profile, onApply, onBac
   const coords = result.matrixCoordinates || { x: 50, y: 50, quadrantLabel: 'Em Análise' };
   const matrixData = [{ x: coords.x, y: coords.y, z: 100, label: 'Você' }];
 
-  // IBGE Logic (Approximation based on PNAD 2023/24)
-  const getIBGEContext = (income: number) => {
-    if (income >= 28000) return { percentile: 99, label: "Top 1% (Elite Econômica)", color: "text-emerald-400" };
-    if (income >= 15000) return { percentile: 95, label: "Top 5% (Classe A)", color: "text-emerald-300" };
-    if (income >= 7500) return { percentile: 90, label: "Top 10% (Classe B)", color: "text-blue-400" };
-    if (income >= 3500) return { percentile: 70, label: "Classe C+ (Média Alta)", color: "text-amber-400" };
-    if (income >= 2000) return { percentile: 50, label: "Classe C (Média)", color: "text-slate-300" };
-    return { percentile: 30, label: "Classe D/E", color: "text-red-400" };
+  // Calculate "Sovereignty Score" (Distance from 100,100)
+  // Max distance (from 0,0 to 100,100) is ~141.42
+  const distFromOptimal = Math.sqrt(Math.pow(100 - coords.x, 2) + Math.pow(100 - coords.y, 2));
+  const sovereigntyScore = Math.max(0, Math.min(100, 100 - (distFromOptimal / 1.41))).toFixed(0);
+
+  // Tactical Insight Logic
+  const getTacticalInsight = (x: number, y: number) => {
+    if (x >= 50 && y >= 50) return {
+       icon: Crown,
+       color: "text-emerald-400",
+       bg: "bg-emerald-950/30",
+       border: "border-emerald-500/30",
+       title: "Manutenção de Soberania",
+       diagnosis: "Você atingiu o estado de Criança (Übermensch). Alta autonomia e eficiência.",
+       action: "O perigo agora é a complacência. Use seu tempo livre para criar ativos que independam da sua presença. Jogue o Jogo Infinito."
+    };
+    if (x < 50 && y >= 50) return {
+       icon: Package,
+       color: "text-amber-400",
+       bg: "bg-amber-950/30",
+       border: "border-amber-500/30",
+       title: "Quebrar as Correntes",
+       diagnosis: "Arquétipo do Camelo. Você carrega muito peso (alta eficiência) mas não escolhe o destino (baixa autonomia).",
+       action: "Sua prioridade absoluta é DELEGAR. Você está vendendo sua vida barato. Use a Matriz de Delegação para comprar sua liberdade de volta."
+    };
+    if (x >= 50 && y < 50) return {
+       icon: Sword,
+       color: "text-red-400",
+       bg: "bg-red-950/30",
+       border: "border-red-500/30",
+       title: "Domar o Caos",
+       diagnosis: "Arquétipo do Leão. Você tem liberdade e diz 'Eu Quero', mas gasta energia demais lutando batalhas operacionais.",
+       action: "Você precisa de SISTEMAS. Sua ineficiência está drenando sua vontade de potência. Use o Analisador 80/20 para eliminar o ruído."
+    };
+    return {
+       icon: Ghost,
+       color: "text-slate-400",
+       bg: "bg-slate-800/50",
+       border: "border-slate-700",
+       title: "Sair da Inércia",
+       diagnosis: "O Último Homem. Baixa autonomia e baixa eficiência. O conforto é sua armadilha.",
+       action: "Defina um Norte Verdadeiro urgente. Você precisa de um 'Porquê' antes de otimizar o 'Como'. Use a Bússola Anual."
+    };
   };
 
-  const ibge = profile ? getIBGEContext(profile.netIncome) : null;
+  const tactic = getTacticalInsight(coords.x, coords.y);
+  const TacticIcon = tactic.icon;
 
+  // Conversions
+  const monthlyIncome = thl.realTHL * thl.monthlyTotalHours;
+  const weeklyIncome = monthlyIncome / 4.33;
+
+  // --- IBGE/FGV LOGIC (Updated to Monthly Income Standards) ---
+  // Base 2024 Estimates for "Classe Social por Renda Domiciliar (adaptado para individual)"
+  const getSocialClass = (income: number) => {
+    if (income >= 22000) return { 
+        label: "Classe A", 
+        percentile: 95, 
+        range: "> R$ 22k", 
+        color: "#10b981", // emerald-500
+        desc: "Elite Econômica (Topo 5%). Capacidade plena de investimento e blindagem patrimonial." 
+    };
+    if (income >= 7100) return { 
+        label: "Classe B", 
+        percentile: 85, 
+        range: "R$ 7.1k - 22k", 
+        color: "#6366f1", // indigo-500
+        desc: "Classe Média Alta. Conforto e acesso a bens de qualidade, mas risco de 'Lifestyle Creep'." 
+    };
+    if (income >= 2900) return { 
+        label: "Classe C", 
+        percentile: 50, 
+        range: "R$ 2.9k - 7.1k", 
+        color: "#f59e0b", // amber-500
+        desc: "Classe Média. A maior força de trabalho do país. Vulnerável a instabilidades econômicas." 
+    };
+    if (income >= 1500) return { 
+        label: "Classe D", 
+        percentile: 25, 
+        range: "R$ 1.5k - 2.9k", 
+        color: "#f97316", // orange-500
+        desc: "Vulnerabilidade. Renda comprometida quase totalmente com subsistência e contas básicas." 
+    };
+    return { 
+        label: "Classe E", 
+        percentile: 10, 
+        range: "< R$ 1.5k", 
+        color: "#ef4444", // red-500
+        desc: "Extrema Vulnerabilidade. Foco total em sobrevivência imediata." 
+    };
+  };
+
+  const socialClass = getSocialClass(monthlyIncome);
+  
   // Generate Bell Curve Data
   const generateBellCurveData = () => {
      const data = [];
@@ -72,8 +154,8 @@ const DiagnosisReport: React.FC<Props> = ({ result, thl, profile, onApply, onBac
 
       {/* Top Row: Matrix & IBGE */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-         {/* Chart Section */}
-         <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 flex flex-col relative">
+         {/* Chart Section - Matrix */}
+         <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 flex flex-col relative h-full">
             <div className="flex justify-between items-center mb-4">
                <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
                   <Target className="w-4 h-4" /> Matriz de Potência
@@ -86,17 +168,15 @@ const DiagnosisReport: React.FC<Props> = ({ result, thl, profile, onApply, onBac
                </button>
             </div>
             
-            <div className="h-64 w-full relative">
+            <div className="h-48 w-full relative mb-4">
                <ResponsiveContainer width="100%" height="100%">
-                  <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
+                  <ScatterChart margin={{ top: 10, right: 10, bottom: 10, left: 0 }}>
                      <XAxis type="number" dataKey="x" name="Autonomia" domain={[0, 100]} tick={false} axisLine={{ stroke: '#475569' }} />
                      <YAxis type="number" dataKey="y" name="Eficiência" domain={[0, 100]} tick={false} axisLine={{ stroke: '#475569' }} />
                      <ZAxis type="number" dataKey="z" range={[100, 100]} />
-                     <RechartsTooltip cursor={{ strokeDasharray: '3 3' }} content={() => null} />
                      <ReferenceLine x={50} stroke="#334155" strokeDasharray="3 3" />
                      <ReferenceLine y={50} stroke="#334155" strokeDasharray="3 3" />
                      
-                     {/* Labels for Quadrants */}
                      <text x="5%" y="95%" className="text-[10px] fill-slate-600 font-bold uppercase">Último Homem</text>
                      <text x="5%" y="10%" className="text-[10px] fill-slate-600 font-bold uppercase">O Camelo</text>
                      <text x="95%" y="95%" className="text-[10px] fill-slate-600 font-bold uppercase text-end" textAnchor="end">Viajante</text>
@@ -110,17 +190,31 @@ const DiagnosisReport: React.FC<Props> = ({ result, thl, profile, onApply, onBac
                   </ScatterChart>
                </ResponsiveContainer>
             </div>
-            <div className="mt-4 text-center">
-               <div className="text-xl font-serif text-white">{coords.quadrantLabel}</div>
-               <div className="text-xs text-slate-500">Autonomia: {coords.x}% | Eficiência: {coords.y}%</div>
-               {coords.x === 50 && coords.y === 50 && (
-                 <div className="text-[10px] text-amber-500 mt-1 flex items-center justify-center gap-1">
-                    <AlertTriangle className="w-3 h-3"/> Coordenadas padrão detectadas. Tente refinar seu contexto.
-                 </div>
-               )}
+
+            <div className={`mt-auto rounded-lg p-4 border ${tactic.bg} ${tactic.border}`}>
+               <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                     <TacticIcon className={`w-5 h-5 ${tactic.color}`} />
+                     <div>
+                        <div className={`text-sm font-bold uppercase tracking-wide ${tactic.color}`}>{tactic.title}</div>
+                        <div className="text-[10px] text-slate-400">Score de Soberania: <span className="text-white font-mono">{sovereigntyScore}/100</span></div>
+                     </div>
+                  </div>
+                  <div className="w-16 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                     <div 
+                        className={`h-full ${tactic.color.replace('text', 'bg')}`} 
+                        style={{ width: `${sovereigntyScore}%` }}
+                     ></div>
+                  </div>
+               </div>
+               <p className="text-xs text-slate-300 leading-relaxed mb-3">{tactic.diagnosis}</p>
+               <div className="flex items-start gap-2 pt-3 border-t border-white/5">
+                  <Zap className={`w-3 h-3 ${tactic.color} mt-0.5 shrink-0`} />
+                  <p className="text-xs font-medium text-white italic">"{tactic.action}"</p>
+               </div>
             </div>
 
-            {/* Matrix Info Modal/Overlay */}
+            {/* Matrix Info Overlay */}
             {showMatrixInfo && (
                <div className="absolute inset-0 bg-slate-950/95 backdrop-blur-sm z-10 p-6 rounded-xl overflow-y-auto animate-fade-in flex flex-col">
                   <div className="flex justify-between items-start mb-4">
@@ -128,81 +222,98 @@ const DiagnosisReport: React.FC<Props> = ({ result, thl, profile, onApply, onBac
                      <button onClick={() => setShowMatrixInfo(false)} className="text-slate-400 hover:text-white"><X className="w-5 h-5"/></button>
                   </div>
                   <div className="space-y-4 text-sm text-slate-300">
-                     <div>
-                        <strong className="text-amber-400 block">O Camelo (Baixa Autonomia, Alta Carga)</strong>
-                        Carrega o peso dos "Tu Deves". Eficiente em cumprir ordens, mas escravo da rotina.
-                     </div>
-                     <div>
-                        <strong className="text-red-400 block">O Leão (Alta Autonomia, Luta Constante)</strong>
-                        O espírito que conquista a liberdade. Diz "Eu Quero". Destrói velhos valores, mas ainda reage a eles.
-                     </div>
-                     <div>
-                        <strong className="text-emerald-400 block">A Criança / Übermensch (Alta Autonomia, Alta Criação)</strong>
-                        O novo começo. Diz "Sim" à vida. Criação pura, jogo, roda que gira por si mesma.
-                     </div>
-                     <div>
-                        <strong className="text-slate-500 block">O Último Homem (Baixa Autonomia, Baixa Eficiência)</strong>
-                        Busca apenas conforto e segurança. "Piscamos o olho e dizemos que inventamos a felicidade."
-                     </div>
+                     <div><strong className="text-amber-400 block">O Camelo</strong>Carrega o peso dos "Tu Deves".</div>
+                     <div><strong className="text-red-400 block">O Leão</strong>Diz "Eu Quero". Conquista liberdade.</div>
+                     <div><strong className="text-emerald-400 block">A Criança</strong>Diz "Sim" à vida. Criação pura.</div>
                   </div>
                </div>
             )}
          </div>
 
-         {/* IBGE & Eternal Return */}
-         <div className="space-y-6">
-            {/* IBGE Card with Bell Curve */}
-            {ibge && (
-               <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
-                  <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                     <BarChart2 className="w-4 h-4" /> Distribuição de Renda (Brasil)
-                  </h3>
-                  
-                  <div className="h-32 w-full -ml-4">
-                     <ResponsiveContainer width="100%" height="100%">
-                        <ComposedChart data={bellCurveData}>
-                           <Area type="monotone" dataKey="density" stroke="#6366f1" fill="rgba(99, 102, 241, 0.1)" strokeWidth={2} />
-                           {/* User Position Line */}
-                           <ReferenceLine x={ibge.percentile} stroke="#10b981" strokeDasharray="3 3" label={{ position: 'top', value: 'Você', fill: '#10b981', fontSize: 10 }} />
-                           <XAxis dataKey="percentile" type="number" hide domain={[0, 100]} />
-                           <YAxis hide />
-                        </ComposedChart>
-                     </ResponsiveContainer>
-                  </div>
+         {/* IBGE & Income Distribution - ENHANCED */}
+         <div className="flex flex-col h-full space-y-4">
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 flex-1 flex flex-col">
+               <div className="flex justify-between items-start mb-4">
+                 <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                    <BarChart2 className="w-4 h-4" /> Distribuição de Renda (FGV)
+                 </h3>
+                 <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${socialClass.color === '#10b981' ? 'bg-emerald-950 text-emerald-400 border-emerald-900' : socialClass.color === '#6366f1' ? 'bg-indigo-950 text-indigo-400 border-indigo-900' : 'bg-slate-800 text-slate-300 border-slate-700'}`}>
+                    {socialClass.range}
+                 </span>
+               </div>
+               
+               <div className="h-40 w-full relative mb-2">
+                  <ResponsiveContainer width="100%" height="100%">
+                     <ComposedChart data={bellCurveData} margin={{top: 20, right: 0, bottom: 0, left: 0}}>
+                        <defs>
+                          <linearGradient id="gradientCurve" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
+                            <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <Area type="monotone" dataKey="density" stroke="#6366f1" fill="url(#gradientCurve)" strokeWidth={2} />
+                        
+                        {/* Class Dividers (Approximated Percentiles based on FGV) */}
+                        <ReferenceLine x={25} stroke="#334155" strokeDasharray="3 3" label={{ position: 'insideBottom', value: 'D', fill: '#64748b', fontSize: 10 }} />
+                        <ReferenceLine x={50} stroke="#334155" strokeDasharray="3 3" label={{ position: 'insideBottom', value: 'C', fill: '#64748b', fontSize: 10 }} />
+                        <ReferenceLine x={85} stroke="#334155" strokeDasharray="3 3" label={{ position: 'insideBottom', value: 'B', fill: '#64748b', fontSize: 10 }} />
+                        <ReferenceLine x={95} stroke="#334155" strokeDasharray="3 3" label={{ position: 'insideBottom', value: 'A', fill: '#64748b', fontSize: 10 }} />
 
-                  <div className="mt-2 flex items-center justify-between border-t border-slate-800 pt-3">
-                     <div>
-                        <div className={`text-xl font-serif ${ibge.color}`}>{ibge.label}</div>
-                        <div className="text-xs text-slate-500">Percentil {ibge.percentile}%</div>
+                        {/* User Position */}
+                        <ReferenceLine 
+                           x={socialClass.percentile} 
+                           stroke={socialClass.color} 
+                           strokeWidth={2}
+                           label={{ position: 'top', value: 'VOCÊ', fill: socialClass.color, fontSize: 10, fontWeight: 'bold' }} 
+                        />
+                        <XAxis dataKey="percentile" type="number" hide domain={[0, 100]} />
+                        <YAxis hide />
+                     </ComposedChart>
+                  </ResponsiveContainer>
+               </div>
+
+               <div className="flex items-end justify-between border-t border-slate-800 pt-3 mt-auto">
+                  <div>
+                     <div className="flex items-center gap-2 mb-1">
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: socialClass.color }}></div>
+                        <div className="text-lg font-serif text-white leading-none">{socialClass.label}</div>
                      </div>
-                     <div className="text-right">
-                        <div className="text-xs text-slate-500">Sua THL</div>
-                        <div className="font-mono text-white">R$ {thl.realTHL.toFixed(2)}/h</div>
-                     </div>
+                     <div className="text-xs text-slate-500">Faixa: {socialClass.range} (Mensal)</div>
+                  </div>
+                  <div className="text-right">
+                     <div className="text-[10px] text-slate-500 uppercase tracking-widest">Renda Mensal Est.</div>
+                     <div className="font-mono text-xl text-white">R$ {monthlyIncome.toLocaleString('pt-BR')}</div>
                   </div>
                </div>
-            )}
+            </div>
 
-            {/* Eternal Return Score */}
-            {result.eternalReturnScore !== undefined && (
-               <div className="bg-gradient-to-r from-purple-950/30 to-slate-900 border border-purple-500/20 p-6 rounded-xl relative overflow-hidden">
-                  <div className="flex items-start justify-between relative z-10">
-                     <div className="flex-1 pr-4">
-                        <h3 className="text-purple-400 font-serif font-bold text-lg mb-2 flex items-center gap-2">
-                           <Infinity className="w-5 h-5" /> Eterno Retorno
-                        </h3>
-                        <div className="text-xs text-slate-500 uppercase tracking-widest mb-1">
-                           "Da Capo!" (De novo!)
-                        </div>
-                        <p className="text-slate-300 italic text-sm leading-relaxed">"{result.eternalReturnAnalysis}"</p>
+            {/* Context Details Card */}
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col gap-4">
+               
+               {/* Interpretation */}
+               <div className="flex gap-3 items-start">
+                  <Globe className="w-4 h-4 text-slate-500 mt-1 shrink-0" />
+                  <p className="text-xs text-slate-300 leading-relaxed italic">
+                     "{socialClass.desc}"
+                  </p>
+               </div>
+
+               {/* Conversions */}
+               <div className="grid grid-cols-2 gap-3 border-t border-slate-800 pt-3">
+                  <div className="bg-black/20 p-2 rounded border border-slate-800/50">
+                     <div className="text-[10px] text-slate-500 uppercase flex items-center gap-1 mb-1">
+                        <Calendar className="w-3 h-3" /> Semanal
                      </div>
-                     <div className="text-right shrink-0">
-                        <div className="text-4xl font-mono text-white font-bold">{result.eternalReturnScore}/100</div>
-                        <div className="text-xs text-purple-400 mt-1">Aceitação</div>
+                     <div className="font-mono text-slate-200 text-sm">R$ {weeklyIncome.toFixed(0)}</div>
+                  </div>
+                  <div className="bg-black/20 p-2 rounded border border-slate-800/50">
+                     <div className="text-[10px] text-slate-500 uppercase flex items-center gap-1 mb-1">
+                        <Zap className="w-3 h-3" /> THL Real
                      </div>
+                     <div className="font-mono text-slate-200 text-sm">R$ {thl.realTHL.toFixed(2)}/h</div>
                   </div>
                </div>
-            )}
+            </div>
          </div>
       </div>
 
