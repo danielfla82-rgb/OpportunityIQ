@@ -33,8 +33,15 @@ export const isSupabaseConfigured =
   SUPABASE_ANON_KEY.length > 0 &&
   !SUPABASE_PROJECT_URL.includes('placeholder');
 
-// Inicialização do Cliente
+// Inicialização do Cliente com opções robustas para OAuth
 export const supabase = createClient(
   isSupabaseConfigured ? SUPABASE_PROJECT_URL : 'https://placeholder.supabase.co',
-  isSupabaseConfigured ? SUPABASE_ANON_KEY : 'placeholder-key'
+  isSupabaseConfigured ? SUPABASE_ANON_KEY : 'placeholder-key',
+  {
+    auth: {
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: true // CRÍTICO: Permite que o Supabase leia o token na URL após o retorno do Google
+    }
+  }
 );

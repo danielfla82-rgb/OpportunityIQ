@@ -21,11 +21,20 @@ const AuthScreen: React.FC<Props> = ({ onDemoLogin }) => {
     if (!isSupabaseConfigured) return;
     setLoading(true);
     setErrorMsg(null);
+    
     try {
+      // Garante que a URL não tenha barras no final para evitar mismatch
+      const redirectUrl = window.location.origin.replace(/\/$/, '');
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin,
+          redirectTo: redirectUrl,
+          queryParams: {
+            // Força o prompt de consentimento para evitar loops se o usuário tiver múltiplos cookies
+            access_type: 'offline',
+            prompt: 'consent',
+          },
         },
       });
       if (error) throw error;
@@ -33,10 +42,13 @@ const AuthScreen: React.FC<Props> = ({ onDemoLogin }) => {
       console.error("Google Login failed:", err);
       let msg = "Erro ao iniciar login com Google.";
       
-      // Tratamento específico do erro de configuração OAuth
       const errorBody = err?.message || JSON.stringify(err);
+      
+      // Diagnóstico de erros comuns
       if (errorBody.includes("missing OAuth secret") || errorBody.includes("Unsupported provider")) {
-         msg = "Configuração Pendente: Ative o Google Provider no painel do Supabase e adicione o Client ID/Secret.";
+         msg = "Configuração Supabase Pendente: Ative o Google Provider no painel e insira Client ID/Secret.";
+      } else if (errorBody.includes("redirect_uri_mismatch")) {
+         msg = "Erro de URL: Adicione '" + window.location.origin + "' nas URLs de Redirecionamento no painel do Supabase.";
       }
       
       setErrorMsg(msg);
