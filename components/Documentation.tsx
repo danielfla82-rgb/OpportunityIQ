@@ -1,8 +1,115 @@
 
-import React from 'react';
-import { BookOpen, Calculator, Brain, Sword, Compass, MessageSquare, CloudLightning, Lock, Wallet } from 'lucide-react';
+import React, { useState } from 'react';
+import { BookOpen, Calculator, Brain, Sword, Compass, MessageSquare, CloudLightning, Lock, Wallet, Database, Copy, Check } from 'lucide-react';
 
 const Documentation: React.FC = () => {
+  const [copied, setCopied] = useState(false);
+
+  const sqlScript = `
+-- 1. Habilitar UUIDs
+create extension if not exists "uuid-ossp";
+
+-- 2. Tabela de Perfis (Financeiro e Config)
+create table public.profiles (
+  id uuid references auth.users not null primary key,
+  net_income numeric default 0,
+  contract_hours_weekly numeric default 40,
+  commute_minutes_daily numeric default 60,
+  aspirational_income numeric default 0,
+  updated_at timestamp with time zone default timezone('utc'::text, now())
+);
+alter table public.profiles enable row level security;
+create policy "Users can view own profile" on profiles for select using (auth.uid() = id);
+create policy "Users can update own profile" on profiles for update using (auth.uid() = id);
+create policy "Users can insert own profile" on profiles for insert with check (auth.uid() = id);
+
+-- 3. Tabela de Delegações
+create table public.delegations (
+  id uuid default uuid_generate_v4() primary key,
+  user_id uuid references auth.users not null,
+  name text not null,
+  cost numeric default 0,
+  hours_saved numeric default 0,
+  frequency text,
+  category text,
+  archetype text,
+  created_at timestamp with time zone default timezone('utc'::text, now())
+);
+alter table public.delegations enable row level security;
+create policy "Users can all own delegations" on delegations for all using (auth.uid() = user_id);
+
+-- 4. Tabela de Ativos (Patrimônio)
+create table public.assets (
+  id uuid default uuid_generate_v4() primary key,
+  user_id uuid references auth.users not null,
+  name text not null,
+  description text,
+  purchase_year numeric,
+  purchase_value numeric default 0,
+  category text,
+  current_value_est numeric,
+  appreciation_rate text,
+  liabilities_text text,
+  created_at timestamp with time zone default timezone('utc'::text, now())
+);
+alter table public.assets enable row level security;
+create policy "Users can all own assets" on assets for all using (auth.uid() = user_id);
+
+-- 5. Contexto de Vida e Diagnóstico
+create table public.life_contexts (
+  user_id uuid references auth.users not null primary key,
+  routine_description text,
+  assets_description text,
+  sleep_hours numeric default 7,
+  physical_activity_minutes numeric default 0,
+  study_minutes numeric default 0,
+  eternal_return_score numeric,
+  eternal_return_text text,
+  matrix_x numeric,
+  matrix_y numeric,
+  matrix_label text,
+  last_updated timestamp with time zone default timezone('utc'::text, now())
+);
+alter table public.life_contexts enable row level security;
+create policy "Users can all own context" on life_contexts for all using (auth.uid() = user_id);
+
+-- 6. Bússola Anual (Metas)
+create table public.year_compass (
+  user_id uuid references auth.users not null primary key,
+  goal1_text text,
+  goal1_completed boolean default false,
+  goal2_text text,
+  goal2_completed boolean default false,
+  goal3_text text,
+  goal3_completed boolean default false,
+  financial_target_income numeric,
+  financial_deadline text,
+  updated_at timestamp with time zone default timezone('utc'::text, now())
+);
+alter table public.year_compass enable row level security;
+create policy "Users can all own compass" on year_compass for all using (auth.uid() = user_id);
+
+-- Gatilho para criar perfil automaticamente ao cadastrar usuário
+create or replace function public.handle_new_user() 
+returns trigger as $$
+begin
+  insert into public.profiles (id)
+  values (new.id);
+  return new;
+end;
+$$ language plpgsql security definer;
+
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user();
+  `.trim();
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(sqlScript);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
     <div className="max-w-4xl mx-auto animate-fade-in pb-12 space-y-12">
       <div className="text-center border-b border-slate-800 pb-8">
@@ -11,9 +118,42 @@ const Documentation: React.FC = () => {
           Wiki do Operador
         </h2>
         <p className="text-slate-400 mt-2">
-          Manual de filosofia aplicada e metodologia de cálculo do OpportunityIQ.
+          Manual de filosofia aplicada e metodologia de cálculo do Zeus.
         </p>
       </div>
+
+      {/* Database Setup Section (NEW) */}
+      <section className="bg-slate-900 border border-indigo-500/30 rounded-xl p-6 shadow-2xl overflow-hidden">
+         <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+               <Database className="w-5 h-5 text-indigo-400" />
+               Instalação do Banco de Dados (Supabase)
+            </h3>
+            <button 
+               onClick={handleCopy}
+               className="text-xs flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded transition-all"
+            >
+               {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+               {copied ? "Copiado!" : "Copiar SQL"}
+            </button>
+         </div>
+         
+         <div className="text-sm text-slate-400 mb-4 space-y-2">
+            <p>Para ativar a persistência na nuvem, siga estes passos:</p>
+            <ol className="list-decimal list-inside space-y-1 ml-2">
+               <li>Crie um projeto no <a href="https://supabase.com" target="_blank" className="text-indigo-400 underline">Supabase.com</a>.</li>
+               <li>Vá em <strong>SQL Editor</strong> no menu lateral.</li>
+               <li>Cole o código abaixo e clique em <strong>Run</strong>.</li>
+               <li>Adicione as variáveis <code>VITE_SUPABASE_URL</code> e <code>VITE_SUPABASE_ANON_KEY</code> no seu arquivo <code>.env</code> local ou nas configurações de deploy (Vercel/Netlify).</li>
+            </ol>
+         </div>
+
+         <div className="bg-black/50 p-4 rounded-lg border border-slate-800 overflow-x-auto">
+            <pre className="text-xs font-mono text-emerald-300 leading-relaxed">
+               {sqlScript}
+            </pre>
+         </div>
+      </section>
 
       {/* Release Notes */}
       <section className="bg-emerald-950/20 border border-emerald-500/20 rounded-xl p-6">
@@ -82,7 +222,7 @@ const Documentation: React.FC = () => {
         </h3>
         <div className="bg-slate-900/50 p-6 rounded-xl border border-slate-800 space-y-4">
           <p className="text-slate-300 text-sm leading-relaxed">
-            A maioria das pessoas calcula seu valor hora dividindo o salário por 160h (40h semanais x 4 semanas). O OpportunityIQ rejeita essa simplificação.
+            A maioria das pessoas calcula seu valor hora dividindo o salário por 160h (40h semanais x 4 semanas). O Zeus rejeita essa simplificação.
           </p>
           
           <div className="bg-black/20 p-4 rounded-lg font-mono text-xs md:text-sm text-emerald-300">

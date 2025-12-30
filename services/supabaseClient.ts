@@ -1,21 +1,37 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-// --- ÁREA DE CONFIGURAÇÃO DO OPERADOR ---
-// Passo 1: Vá em Supabase > Settings > API
-// Passo 2: Copie a "Project URL" e a "anon public key"
-// Passo 3: Cole abaixo (mantenha as aspas)
+// --- CONFIGURAÇÃO DE AMBIENTE ---
+// ATENÇÃO: Credenciais injetadas diretamente para funcionamento imediato.
+// Em produção, recomenda-se mover estas chaves para variáveis de ambiente (.env).
 
-const SUPABASE_PROJECT_URL = 'https://jteifpsethmwgesmxuhi.supabase.co' as string;
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp0ZWlmcHNldGhtd2dlc214dWhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYzMzg0NTYsImV4cCI6MjA4MTkxNDQ1Nn0.3QADRJgayD2rJwzm0ufUcXQn4SdGeye4burSP1Q4RZc' as string;
+// Project Ref extraído do token: mqoxwkgzsyrpntzylwdvg
+const HARDCODED_URL = "https://mqoxwkgzsyrpntzylwdvg.supabase.co";
+const HARDCODED_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1xb3h3a2dzeXJwbnR6eWx3ZHZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjcxMjczMjUsImV4cCI6MjA4MjcwMzMyNX0.M776RiZ3awXR33IWQJDbs6aUoN-ieUQtqaFB_QK9WP0";
+
+// Tenta pegar do Vite (import.meta.env) ou fallback para process.env
+const getEnv = (key: string) => {
+  if (typeof import.meta !== 'undefined' && (import.meta as any).env) {
+    return (import.meta as any).env[key];
+  }
+  if (typeof process !== 'undefined' && process.env) {
+    return process.env[key];
+  }
+  return '';
+};
+
+// Prioriza as chaves fornecidas hardcoded, depois tenta variáveis de ambiente
+const SUPABASE_PROJECT_URL = HARDCODED_URL || getEnv('VITE_SUPABASE_URL') || getEnv('SUPABASE_URL');
+const SUPABASE_ANON_KEY = HARDCODED_KEY || getEnv('VITE_SUPABASE_ANON_KEY') || getEnv('SUPABASE_ANON_KEY');
 
 // ----------------------------------------
 
-// Verificação de segurança para ativar/desativar o modo nuvem
 export const isSupabaseConfigured = 
-  SUPABASE_PROJECT_URL !== 'COLE_SUA_URL_AQUI' && 
-  SUPABASE_PROJECT_URL.includes('supabase.co') &&
-  SUPABASE_ANON_KEY !== 'COLE_SUA_KEY_AQUI';
+  !!SUPABASE_PROJECT_URL && 
+  SUPABASE_PROJECT_URL.length > 0 &&
+  !!SUPABASE_ANON_KEY && 
+  SUPABASE_ANON_KEY.length > 0 &&
+  !SUPABASE_PROJECT_URL.includes('placeholder');
 
 // Inicialização do Cliente
 export const supabase = createClient(
