@@ -2,11 +2,10 @@
 import { createClient } from '@supabase/supabase-js';
 
 // --- CONFIGURAÇÃO DE AMBIENTE ---
-// ATENÇÃO: Credenciais injetadas diretamente para funcionamento imediato.
-// Em produção, recomenda-se mover estas chaves para variáveis de ambiente (.env).
+// ATENÇÃO: Credenciais injetadas conforme solicitação.
+// URL e Chave fornecidas pelo usuário.
 
-// Project Ref extraído do token: mqoxwkgzsyrpntzylwdvg
-const HARDCODED_URL = "https://mqoxwkgzsyrpntzylwdvg.supabase.co";
+const HARDCODED_URL = "https://mqoxwkgsyrpntzylwdvg.supabase.co";
 const HARDCODED_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1xb3h3a2dzeXJwbnR6eWx3ZHZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjcxMjczMjUsImV4cCI6MjA4MjcwMzMyNX0.M776RiZ3awXR33IWQJDbs6aUoN-ieUQtqaFB_QK9WP0";
 
 // Tenta pegar do Vite (import.meta.env) ou fallback para process.env

@@ -4,8 +4,28 @@ import type { Chat } from "@google/genai";
 import { FinancialProfile, CalculatedTHL, SunkCostScenario, ParetoResult, RazorAnalysis, EnergyAuditItem, SkillAnalysis, PreMortemResult, TimeTravelResult, InactionAnalysis, LifestyleAudit, ContextAnalysisResult, NietzscheArchetype, AssetItem } from "../types";
 
 // --- CLIENT HELPER ---
+const getApiKey = () => {
+  // 1. Try global process (injected by index.html polyfill or Node)
+  if (typeof process !== 'undefined' && process.env?.API_KEY) {
+    return process.env.API_KEY;
+  }
+  // 2. Try window.process (explicit polyfill check)
+  if (typeof window !== 'undefined' && (window as any).process?.env?.API_KEY) {
+    return (window as any).process.env.API_KEY;
+  }
+  // 3. Try Vite env (native support)
+  if (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_KEY) {
+    return (import.meta as any).env.VITE_API_KEY;
+  }
+  return '';
+};
+
 const getClient = () => {
-  return new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    console.warn("Gemini API Key missing. AI features will not work.");
+  }
+  return new GoogleGenAI({ apiKey });
 };
 
 // --- JSON PARSER HELPER ---
