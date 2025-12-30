@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { supabase, isSupabaseConfigured } from '../services/supabaseClient';
-import { Loader2, Mail, Database, HardDrive, CloudLightning, CloudOff, AlertCircle, Lock, LogIn, UserPlus, Zap, AlertTriangle, HelpCircle, X, Check, Copy } from 'lucide-react';
+import { Loader2, Mail, Database, HardDrive, CloudLightning, CloudOff, AlertCircle, Lock, LogIn, UserPlus, Zap, AlertTriangle, HelpCircle, X, Check, Copy, Key } from 'lucide-react';
 
 interface Props {
   onDemoLogin?: () => void;
@@ -30,7 +30,8 @@ const AuthScreen: React.FC<Props> = ({ onDemoLogin }) => {
     setErrorMsg(null);
     
     try {
-      const redirectUrl = window.location.origin; // ex: http://localhost:5173
+      // Usa a origem atual (localhost ou vercel app) como destino final após o fluxo do Google
+      const redirectUrl = window.location.origin;
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -49,8 +50,9 @@ const AuthScreen: React.FC<Props> = ({ onDemoLogin }) => {
       
       const errorBody = err?.message || JSON.stringify(err);
       
+      // Erros comuns de configuração
       if (errorBody.includes("missing OAuth secret") || errorBody.includes("Unsupported provider")) {
-         msg = "Configuração Supabase Pendente. Verifique o Diagnóstico abaixo.";
+         msg = "Supabase não configurado corretamente. Falta Client ID/Secret.";
       }
       
       setErrorMsg(msg);
@@ -121,50 +123,52 @@ const AuthScreen: React.FC<Props> = ({ onDemoLogin }) => {
                  <div className="bg-amber-500/10 p-2 rounded-lg border border-amber-500/20">
                     <AlertTriangle className="w-6 h-6 text-amber-500" />
                  </div>
-                 <h2 className="text-xl font-serif text-white">Diagnóstico de Configuração Google OAuth</h2>
+                 <div>
+                    <h2 className="text-xl font-serif text-white">Diagnóstico de Erro 400/403</h2>
+                    <p className="text-xs text-slate-400">Siga estes passos exatos para corrigir o Google Login.</p>
+                 </div>
               </div>
 
               <div className="space-y-6 text-sm text-slate-300">
-                 <div className="bg-red-950/30 border border-red-500/20 p-4 rounded-lg">
-                    <strong className="text-red-400 block mb-1">Erro 403 (Robô do Google)?</strong>
-                    <p>Isso geralmente significa que a URL de Callback do Supabase não foi adicionada no Google Cloud ou o app está em modo "Teste" sem seu email na lista.</p>
+                 
+                 <div className="bg-slate-950 p-4 rounded-lg border border-slate-800">
+                    <h3 className="text-white font-bold mb-3 flex items-center gap-2">
+                       <Key className="w-4 h-4 text-emerald-400" />
+                       Passo 1: Credenciais no Supabase (Causa Principal)
+                    </h3>
+                    <p className="mb-2 text-slate-400">
+                       Se a URL de callback está correta no Google mas você recebe "redirect_uri_mismatch", o problema é que o <strong>Client ID</strong> salvo no Supabase está errado ou antigo.
+                    </p>
+                    <ul className="list-disc list-inside space-y-1 text-xs text-emerald-300 bg-emerald-950/20 p-3 rounded border border-emerald-900/50">
+                       <li>Vá no painel do Supabase &gt; Authentication &gt; Providers &gt; Google.</li>
+                       <li>Confira se o <strong>Client ID</strong> termina com <code>.apps.googleusercontent.com</code>.</li>
+                       <li><strong>DICA DE OURO:</strong> Apague o que está lá e cole novamente o ID e Secret do Google Cloud Console para garantir que não há espaços em branco.</li>
+                    </ul>
                  </div>
 
                  <div>
-                    <h3 className="text-white font-bold mb-2 flex items-center gap-2">1. Configuração no Google Cloud Console</h3>
-                    <p className="mb-2">Vá em <strong>APIs e Serviços &gt; Credenciais &gt; ID do cliente OAuth 2.0</strong>.</p>
-                    <div className="space-y-3">
-                       <div>
-                          <label className="text-xs uppercase text-slate-500 font-bold">URI de Redirecionamento Autorizado (Obrigatório)</label>
-                          <div className="flex gap-2 mt-1">
-                             <code className="flex-1 bg-black/50 p-2 rounded border border-slate-700 font-mono text-emerald-400 break-all">
-                                {callbackUrl}
-                             </code>
-                             <button className="p-2 bg-slate-800 hover:bg-slate-700 rounded text-slate-300" onClick={() => navigator.clipboard.writeText(callbackUrl)} title="Copiar">
-                                <Copy className="w-4 h-4" />
-                             </button>
-                          </div>
-                          <p className="text-xs text-slate-500 mt-1">Copie EXATAMENTE esta URL e cole no Google Cloud. Não use localhost aqui.</p>
-                       </div>
+                    <h3 className="text-white font-bold mb-2 flex items-center gap-2">Passo 2: Configuração no Google Cloud</h3>
+                    <p className="mb-2">Confirme se a URL de callback abaixo está na lista de <strong>"URIs de redirecionamento autorizados"</strong>.</p>
+                    <div className="flex gap-2 mt-1 mb-2">
+                       <code className="flex-1 bg-black/50 p-2 rounded border border-slate-700 font-mono text-emerald-400 break-all">
+                          {callbackUrl}
+                       </code>
+                       <button className="p-2 bg-slate-800 hover:bg-slate-700 rounded text-slate-300" onClick={() => navigator.clipboard.writeText(callbackUrl)} title="Copiar">
+                          <Copy className="w-4 h-4" />
+                       </button>
                     </div>
+                    <p className="text-xs text-slate-500 bg-slate-800/50 p-2 rounded">
+                       Atenção: Não adicione a URL raiz ({`https://${projectId}.supabase.co`}) nos redirecionamentos. Apenas a URL completa terminada em <code>/callback</code>.
+                    </p>
                  </div>
 
                  <div>
-                    <h3 className="text-white font-bold mb-2 flex items-center gap-2">2. Configuração no Supabase</h3>
-                    <p className="mb-2">Vá em <strong>Authentication &gt; URL Configuration &gt; Redirect URLs</strong>.</p>
-                    <div className="bg-slate-950 p-3 rounded border border-slate-800 space-y-2">
-                       <p>Certifique-se que estas URLs estão na lista (Allow List):</p>
-                       <ul className="list-disc list-inside font-mono text-xs text-slate-400">
-                          <li>http://localhost:5173</li>
-                          <li>https://zeus-omega-ten.vercel.app</li>
-                          <li>{window.location.origin} (Sua URL atual)</li>
-                       </ul>
-                    </div>
-                 </div>
-
-                 <div>
-                    <h3 className="text-white font-bold mb-2 flex items-center gap-2">3. Tela de Permissão OAuth (Google)</h3>
-                    <p>Se o Status de publicação for <strong>"Teste"</strong>, você OBRIGATORIAMENTE deve adicionar seu email gmail pessoal na lista de <strong>"Usuários de teste"</strong> no painel do Google. Caso contrário, receberá erro 403.</p>
+                    <h3 className="text-white font-bold mb-2 flex items-center gap-2">Passo 3: Lista de Teste (Erro 403)</h3>
+                    <p>Se o erro for "Access blocked" (403), vá em <strong>Tela de permissão OAuth</strong> no Google.</p>
+                    <ul className="list-disc list-inside text-xs text-slate-400 mt-1">
+                       <li>Se status = "Em teste", adicione seu email gmail em "Usuários de teste".</li>
+                       <li>Ou clique em "Publicar aplicativo" para liberar para todos.</li>
+                    </ul>
                  </div>
               </div>
 
@@ -173,7 +177,7 @@ const AuthScreen: React.FC<Props> = ({ onDemoLogin }) => {
                    onClick={() => setShowDiagnostics(false)}
                    className="bg-slate-100 text-slate-900 px-6 py-2 rounded-lg font-bold hover:bg-white transition-colors"
                  >
-                    Entendi, vou corrigir
+                    Fechar Diagnóstico
                  </button>
               </div>
            </div>
@@ -194,13 +198,18 @@ const AuthScreen: React.FC<Props> = ({ onDemoLogin }) => {
               <div className="bg-red-950/30 border border-red-900/50 rounded-lg p-3 mb-4 animate-fade-in flex flex-col gap-2">
                  <div className="flex items-start gap-2">
                     <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
-                    <p className="text-sm text-red-200 font-medium">{errorMsg}</p>
+                    <div className="flex-1">
+                       <p className="text-sm text-red-200 font-medium">{errorMsg}</p>
+                       <p className="text-[10px] text-red-300 mt-1 leading-tight opacity-80">
+                          Provável erro de configuração entre Google Cloud e Supabase.
+                       </p>
+                    </div>
                  </div>
                  <button 
                    onClick={() => setShowDiagnostics(true)}
-                   className="text-xs bg-red-900/40 text-red-100 py-1.5 px-3 rounded border border-red-700/30 self-start hover:bg-red-900/60 transition-colors flex items-center gap-1"
+                   className="text-xs bg-red-900/40 text-red-100 py-1.5 px-3 rounded border border-red-700/30 self-start hover:bg-red-900/60 transition-colors flex items-center gap-1 mt-1"
                  >
-                   <HelpCircle className="w-3 h-3" /> Ver Diagnóstico de Correção
+                   <HelpCircle className="w-3 h-3" /> Como corrigir o erro 400?
                  </button>
               </div>
            )}
