@@ -1,7 +1,8 @@
+
 import React, { useState } from 'react';
 import { CalculatedTHL, LifestyleAudit } from '../types';
 import { getLifestyleAudit } from '../services/geminiService';
-import { ShoppingBag, Hourglass, TrendingUp, ShieldCheck, Loader2, ArrowDownRight } from 'lucide-react';
+import { ShoppingBag, Hourglass, TrendingUp, ShieldCheck, Loader2, ArrowDownRight, AlertOctagon, Calculator } from 'lucide-react';
 
 interface Props {
   thl: CalculatedTHL;
@@ -18,8 +19,11 @@ const LifestyleInflator: React.FC<Props> = ({ thl }) => {
     if (!item.trim() || !price) return;
     setLoading(true);
     const result = await getLifestyleAudit(item, parseFloat(price));
-    // Calculate hours locally based on current THL
-    result.hoursOfLifeLost = parseFloat(price) / thl.realTHL;
+    
+    // Safety check for zero division
+    const hourlyRate = thl.realTHL > 0 ? thl.realTHL : 1; 
+    
+    result.hoursOfLifeLost = parseFloat(price) / hourlyRate;
     setAudit(result);
     setLoading(false);
   };
@@ -31,6 +35,22 @@ const LifestyleInflator: React.FC<Props> = ({ thl }) => {
       default: return 'text-slate-400 border-slate-500/50 bg-slate-950/20';
     }
   };
+
+  // If user hasn't calculated THL yet, show warning
+  if (thl.realTHL <= 0) {
+     return (
+        <div className="max-w-2xl mx-auto text-center py-12 animate-fade-in bg-slate-900/50 border border-slate-800 rounded-xl p-8">
+           <div className="w-16 h-16 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-amber-500/20">
+              <Calculator className="w-8 h-8 text-amber-500" />
+           </div>
+           <h2 className="text-xl font-serif text-white mb-2">Dados Insuficientes</h2>
+           <p className="text-slate-400 text-sm mb-6">
+              Para calcular o "Custo em Liberdade" de uma compra, precisamos saber quanto vale a sua hora.
+              Por favor, complete a Calculadora THL primeiro.
+           </p>
+        </div>
+     );
+  }
 
   return (
     <div className="max-w-4xl mx-auto animate-fade-in space-y-8">
@@ -120,19 +140,29 @@ const LifestyleInflator: React.FC<Props> = ({ thl }) => {
                    </span>
                 </div>
 
-                <div className="bg-black/20 rounded-lg p-5 border border-white/5 flex flex-col md:flex-row gap-6">
-                   <div className="flex-1">
-                      <h4 className="text-emerald-400 font-bold mb-1">{audit.paretoAlternative.name}</h4>
-                      <p className="text-slate-300 text-sm leading-relaxed">"{audit.paretoAlternative.reasoning}"</p>
-                   </div>
-                   <div className="text-right border-l border-white/10 pl-6 min-w-[150px]">
-                      <div className="text-xs text-slate-500 uppercase">Preço Estimado</div>
-                      <div className="text-xl font-mono text-white">R$ {audit.paretoAlternative.priceEstimate.toLocaleString()}</div>
-                      <div className="text-xs text-emerald-500 mt-1">
-                         Economia de {((1 - (audit.paretoAlternative.priceEstimate / parseFloat(price))) * 100).toFixed(0)}%
-                      </div>
-                   </div>
-                </div>
+                {audit.paretoAlternative.name === "Erro na Análise" ? (
+                    <div className="bg-red-950/20 border border-red-900/50 p-4 rounded-lg flex items-center gap-3">
+                        <AlertOctagon className="w-8 h-8 text-red-500" />
+                        <div className="text-sm text-red-200">
+                           <strong className="block mb-1">Falha na Inteligência</strong>
+                           A IA não conseguiu analisar este item. Tente simplificar o nome (ex: "Celular" em vez de "iPhone 15 Pro Max 1TB Azul").
+                        </div>
+                    </div>
+                ) : (
+                    <div className="bg-black/20 rounded-lg p-5 border border-white/5 flex flex-col md:flex-row gap-6">
+                       <div className="flex-1">
+                          <h4 className="text-emerald-400 font-bold mb-1">{audit.paretoAlternative.name}</h4>
+                          <p className="text-slate-300 text-sm leading-relaxed">"{audit.paretoAlternative.reasoning}"</p>
+                       </div>
+                       <div className="text-right border-l border-white/10 pl-6 min-w-[150px]">
+                          <div className="text-xs text-slate-500 uppercase">Preço Estimado</div>
+                          <div className="text-xl font-mono text-white">R$ {audit.paretoAlternative.priceEstimate.toLocaleString()}</div>
+                          <div className="text-xs text-emerald-500 mt-1">
+                             Economia de {((1 - (audit.paretoAlternative.priceEstimate / parseFloat(price))) * 100).toFixed(0)}%
+                          </div>
+                       </div>
+                    </div>
+                )}
              </div>
           </div>
        )}

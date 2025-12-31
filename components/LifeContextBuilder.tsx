@@ -7,26 +7,40 @@ import { Book, Car, Clock, Sparkles, Loader2, CheckCircle2, AlertTriangle, Moon,
 interface Props {
   thl: CalculatedTHL;
   initialContext: LifeContext | null;
-  assets: AssetItem[]; // NEW prop
+  assets: AssetItem[]; 
   onAnalysisComplete: (result: ContextAnalysisResult, context: LifeContext) => void;
-  onNavigate: (view: AppView) => void; // For linking to Inventory
+  onUpdate?: (updates: Partial<LifeContext>) => void; // New prop for real-time saving
+  onNavigate: (view: AppView) => void;
 }
 
-const LifeContextBuilder: React.FC<Props> = ({ thl, initialContext, assets, onAnalysisComplete, onNavigate }) => {
+const LifeContextBuilder: React.FC<Props> = ({ thl, initialContext, assets, onAnalysisComplete, onUpdate, onNavigate }) => {
   const [routine, setRoutine] = useState(initialContext?.routineDescription || "");
   const [sleepHours, setSleepHours] = useState(initialContext?.sleepHours || 7);
   const [physicalMinutes, setPhysicalMinutes] = useState(initialContext?.physicalActivityMinutes || 0);
   const [studyMinutes, setStudyMinutes] = useState(initialContext?.studyMinutes || 0);
   const [loading, setLoading] = useState(false);
 
+  // Sync state when props change (initial load)
   useEffect(() => {
     if (initialContext) {
-        setRoutine(initialContext.routineDescription);
+        setRoutine(initialContext.routineDescription || "");
         setSleepHours(initialContext.sleepHours || 7);
         setPhysicalMinutes(initialContext.physicalActivityMinutes || 0);
         setStudyMinutes(initialContext.studyMinutes || 0);
     }
   }, [initialContext]);
+
+  // Real-time propagation of changes to parent (auto-save behavior logic resides in parent)
+  useEffect(() => {
+    if (onUpdate) {
+        onUpdate({
+            routineDescription: routine,
+            sleepHours,
+            physicalActivityMinutes: physicalMinutes,
+            studyMinutes
+        });
+    }
+  }, [routine, sleepHours, physicalMinutes, studyMinutes]);
 
   const handleAnalyze = async () => {
     if (!routine.trim()) return;
@@ -37,7 +51,7 @@ const LifeContextBuilder: React.FC<Props> = ({ thl, initialContext, assets, onAn
     
     const contextData: LifeContext = {
         routineDescription: routine,
-        assetsDescription: `Inventário Atualizado: ${assets.length} itens.`, // Placeholder for legacy compatibility
+        assetsDescription: `Inventário Atualizado: ${assets.length} itens.`,
         sleepHours: sleepHours,
         physicalActivityMinutes: physicalMinutes,
         studyMinutes: studyMinutes,
@@ -80,9 +94,14 @@ const LifeContextBuilder: React.FC<Props> = ({ thl, initialContext, assets, onAn
       {/* Input Form */}
       <div className="space-y-6">
          <div className="glass-panel p-6 rounded-xl border-l-4 border-indigo-500">
-            <div className="flex items-center gap-2 mb-4">
-               <Clock className="w-5 h-5 text-indigo-400" />
-               <h3 className="font-bold text-slate-200 uppercase tracking-widest text-sm">A Rotina (Semana Típica)</h3>
+            <div className="flex items-center justify-between mb-4">
+               <div className="flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-indigo-400" />
+                  <h3 className="font-bold text-slate-200 uppercase tracking-widest text-sm">A Rotina (Semana Típica)</h3>
+               </div>
+               <span className="text-[10px] text-emerald-400 flex items-center gap-1 opacity-70">
+                  <CheckCircle2 className="w-3 h-3" /> Salvo Auto
+               </span>
             </div>
             <p className="text-xs text-slate-500 mb-3">
                O que você faz desde que acorda? Quanto tempo gasta no trânsito, cozinhando, em reuniões inúteis, limpando a casa? Seja honesto sobre o tempo desperdiçado.

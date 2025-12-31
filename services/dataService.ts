@@ -25,6 +25,100 @@ const DEFAULT_COMPASS: YearlyCompassData = {
   financialGoal: { targetMonthlyIncome: 0, targetTHL: 0, deadlineMonth: "" }
 };
 
+// --- MOCK DATA FOR DEMO MODE ---
+const MOCK_DATA: FullUserData = {
+  profile: {
+    netIncome: 35000,
+    contractHoursWeekly: 45,
+    commuteMinutesDaily: 40,
+    aspirationalIncome: 80000
+  },
+  delegations: [
+    { id: 'mock-1', name: 'Faxina Semanal', cost: 800, hoursSaved: 16, frequency: 'monthly', category: 'cleaning', archetype: 'CAMEL' },
+    { id: 'mock-2', name: 'Motorista App (Deslocamentos)', cost: 1200, hoursSaved: 20, frequency: 'monthly', category: 'transport', archetype: 'CAMEL' },
+    { id: 'mock-3', name: 'Assistente Virtual (Emails)', cost: 1500, hoursSaved: 30, frequency: 'monthly', category: 'admin', archetype: 'CAMEL' }
+  ],
+  assets: [
+    {
+      id: 'mock-a1',
+      name: 'BMW 320i',
+      description: 'Veículo principal, ano 2022.',
+      purchaseYear: 2022,
+      purchaseValue: 280000,
+      category: 'VEHICLE',
+      aiAnalysis: {
+        currentValueEstimated: 245000,
+        depreciationTrend: 'DEPRECIATING',
+        liquidityScore: 60,
+        maintenanceCostMonthlyEstimate: 2500,
+        commentary: 'Ativo de alta depreciação e custo de manutenção. Considere se o status compensa o custo de oportunidade.'
+      }
+    },
+    {
+      id: 'mock-a2',
+      name: 'Carteira Bitcoin (Cold Wallet)',
+      description: 'Reserva de valor soberana.',
+      purchaseYear: 2020,
+      purchaseValue: 50000,
+      category: 'INVESTMENT',
+      aiAnalysis: {
+        currentValueEstimated: 180000,
+        depreciationTrend: 'APPRECIATING',
+        liquidityScore: 90,
+        maintenanceCostMonthlyEstimate: 0,
+        commentary: 'Excelente reserva de valor com alta liquidez e sem custo de manutenção. Um ativo "Estrela".'
+      }
+    },
+    {
+      id: 'mock-a3',
+      name: 'MacBook Pro M3 Max',
+      description: 'Ferramenta de trabalho essencial.',
+      purchaseYear: 2024,
+      purchaseValue: 25000,
+      category: 'ELECTRONICS',
+      aiAnalysis: {
+        currentValueEstimated: 22000,
+        depreciationTrend: 'STABLE',
+        liquidityScore: 70,
+        maintenanceCostMonthlyEstimate: 0,
+        commentary: 'Ferramenta produtiva. Deprecia, mas gera alavancagem operacional (ROI positivo indireto).'
+      }
+    }
+  ],
+  lifeContext: {
+    routineDescription: "Acordo às 5:30, treino musculação. Trabalho das 9h às 19h liderando time de vendas. Gasto muito tempo em reuniões operacionais que poderiam ser emails. No trânsito, escuto audiobooks. Fim de semana tento descansar mas acabo resolvendo pendências da casa.",
+    assetsDescription: "Carro premium, alguns investimentos em cripto e renda fixa, apartamento financiado.",
+    sleepHours: 6.5,
+    physicalActivityMinutes: 200,
+    studyMinutes: 120,
+    lastUpdated: new Date().toISOString(),
+    eternalReturnScore: 68,
+    eternalReturnText: "Sua rotina mostra ambição, mas você está preso no arquétipo do Leão: conquista muito, mas carrega o mundo nas costas. O trânsito e as reuniões operacionais são seus maiores drenos de vida."
+  },
+  analysisResult: {
+    delegationSuggestions: [
+      { id: 'sug-1', name: 'Personal Chef / Marmitas', cost: 600, hoursSaved: 12, frequency: 'monthly', category: 'other', archetype: 'CAMEL' },
+      { id: 'sug-2', name: 'Automação de Relatórios', cost: 200, hoursSaved: 8, frequency: 'monthly', category: 'software', archetype: 'CAMEL' }
+    ],
+    sunkCostSuspects: [],
+    lifestyleRisks: ["Financiamento imobiliário comprometendo liquidez", "Carro de luxo com alto custo mensal"],
+    summary: "Você é um High Performer preso em tarefas operacionais. Sua renda é excelente (Classe A), mas sua autonomia é média. Você troca tempo por dinheiro numa taxa alta, mas ainda troca. O objetivo agora é desconectar a renda da sua presença física.",
+    eternalReturnScore: 68,
+    eternalReturnAnalysis: "Sua rotina mostra ambição, mas você está preso no arquétipo do Leão.",
+    matrixCoordinates: {
+      x: 45, // Autonomia média/baixa
+      y: 85, // Eficiência alta
+      quadrantLabel: "O Leão (Eficiente mas Preso)"
+    }
+  },
+  yearCompass: {
+    goal1: { text: "Atingir R$ 100k/mês de Faturamento", completed: false },
+    goal2: { text: "Delegar 100% do operacional da empresa", completed: false },
+    goal3: { text: "Completar um Ironman 70.3", completed: true },
+    financialGoal: { targetMonthlyIncome: 80000, targetTHL: 500, deadlineMonth: "Dezembro 2025" }
+  }
+};
+
 // --- Local Storage Helpers (Fallback) ---
 const getLocalData = (): any => {
   try {
@@ -46,7 +140,12 @@ export const dataService = {
    * Loads all user data
    */
   loadFullData: async (userId: string): Promise<FullUserData> => {
-    if (!isSupabaseConfigured || isDemo(userId)) {
+    // SE FOR USUÁRIO DEMO, RETORNA DADOS MOCKADOS IMEDIATAMENTE
+    if (isDemo(userId)) {
+        return MOCK_DATA;
+    }
+
+    if (!isSupabaseConfigured) {
        const data = getLocalData();
        return {
          profile: data.profile || DEFAULT_PROFILE,
@@ -169,7 +268,10 @@ export const dataService = {
    */
   saveProfile: async (userId: string, profile: FinancialProfile) => {
     if (!isSupabaseConfigured || isDemo(userId)) {
-        saveLocalData({ profile });
+        // No modo demo, não salvamos persistente para não estragar a experiência de refresh
+        // Mas se fosse um offline real, salvaríamos no local storage.
+        // Como é "Showcase", vamos salvar local apenas para a sessão atual funcionar
+        if (!isDemo(userId)) saveLocalData({ profile });
         return { error: null };
     }
     return supabase.from('profiles').upsert({
@@ -187,7 +289,7 @@ export const dataService = {
    */
   saveCompass: async (userId: string, data: YearlyCompassData) => {
     if (!isSupabaseConfigured || isDemo(userId)) {
-        saveLocalData({ yearCompass: data });
+        if (!isDemo(userId)) saveLocalData({ yearCompass: data });
         return { error: null };
     }
     return supabase.from('year_compass').upsert({
@@ -209,7 +311,7 @@ export const dataService = {
    */
   saveContext: async (userId: string, context: LifeContext, analysis?: ContextAnalysisResult) => {
     if (!isSupabaseConfigured || isDemo(userId)) {
-        saveLocalData({ lifeContext: context, analysisResult: analysis });
+        if (!isDemo(userId)) saveLocalData({ lifeContext: context, analysisResult: analysis });
         return { error: null };
     }
     const payload: any = {
@@ -238,10 +340,12 @@ export const dataService = {
    */
   addDelegation: async (userId: string, item: DelegationItem) => {
     if (!isSupabaseConfigured || isDemo(userId)) {
-        const current = getLocalData();
-        const list = current.delegations || [];
-        if (!list.find((i: DelegationItem) => i.id === item.id)) {
-            saveLocalData({ delegations: [...list, item] });
+        if (!isDemo(userId)) {
+            const current = getLocalData();
+            const list = current.delegations || [];
+            if (!list.find((i: DelegationItem) => i.id === item.id)) {
+                saveLocalData({ delegations: [...list, item] });
+            }
         }
         return { error: null };
     }
@@ -263,9 +367,11 @@ export const dataService = {
    */
   removeDelegation: async (userId: string, itemId: string) => {
      if (!isSupabaseConfigured || isDemo(userId)) {
-        const current = getLocalData();
-        const list = current.delegations || [];
-        saveLocalData({ delegations: list.filter((i: DelegationItem) => i.id !== itemId) });
+        if (!isDemo(userId)) {
+            const current = getLocalData();
+            const list = current.delegations || [];
+            saveLocalData({ delegations: list.filter((i: DelegationItem) => i.id !== itemId) });
+        }
         return { error: null };
      }
      return supabase.from('delegations').delete().eq('id', itemId).eq('user_id', userId);
@@ -276,10 +382,12 @@ export const dataService = {
    */
   addAsset: async (userId: string, item: AssetItem) => {
     if (!isSupabaseConfigured || isDemo(userId)) {
-        const current = getLocalData();
-        const list = current.assets || [];
-        if (!list.find((i: AssetItem) => i.id === item.id)) {
-            saveLocalData({ assets: [...list, item] });
+        if (!isDemo(userId)) {
+            const current = getLocalData();
+            const list = current.assets || [];
+            if (!list.find((i: AssetItem) => i.id === item.id)) {
+                saveLocalData({ assets: [...list, item] });
+            }
         }
         return { error: null };
     }
@@ -304,9 +412,11 @@ export const dataService = {
    */
   removeAsset: async (userId: string, itemId: string) => {
      if (!isSupabaseConfigured || isDemo(userId)) {
-        const current = getLocalData();
-        const list = current.assets || [];
-        saveLocalData({ assets: list.filter((i: AssetItem) => i.id !== itemId) });
+        if (!isDemo(userId)) {
+            const current = getLocalData();
+            const list = current.assets || [];
+            saveLocalData({ assets: list.filter((i: AssetItem) => i.id !== itemId) });
+        }
         return { error: null };
      }
      return supabase.from('assets').delete().eq('id', itemId).eq('user_id', userId);

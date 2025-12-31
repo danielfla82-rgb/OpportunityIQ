@@ -5,15 +5,12 @@ import { FinancialProfile, CalculatedTHL, SunkCostScenario, ParetoResult, RazorA
 
 // --- CLIENT HELPER ---
 const getApiKey = () => {
-  // 1. Try global process (injected by index.html polyfill or Node)
   if (typeof process !== 'undefined' && process.env?.API_KEY) {
     return process.env.API_KEY;
   }
-  // 2. Try window.process (explicit polyfill check)
   if (typeof window !== 'undefined' && (window as any).process?.env?.API_KEY) {
     return (window as any).process.env.API_KEY;
   }
-  // 3. Try Vite env (native support)
   if (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_KEY) {
     return (import.meta as any).env.VITE_API_KEY;
   }
@@ -34,32 +31,44 @@ const cleanAndParseJSON = (text: string | undefined): any => {
     throw new Error("A resposta da IA veio vazia.");
   }
   
+  // 1. Tenta parse direto
   try {
     return JSON.parse(text);
-  } catch (e1) {
-    try {
-      const match = text.match(/```json\s*([\s\S]*?)\s*```/);
-      if (match && match[1]) {
-        return JSON.parse(match[1]);
+  } catch (e) {
+    // 2. Tenta extrair de blocos de código
+    const codeBlockMatch = text.match(/```json\s*([\s\S]*?)\s*```/);
+    if (codeBlockMatch && codeBlockMatch[1]) {
+      try {
+        return JSON.parse(codeBlockMatch[1]);
+      } catch (e2) {
+        // continue
       }
-      
+    }
+
+    // 3. Tenta encontrar o primeiro { e o último }
+    try {
       const firstBrace = text.indexOf('{');
       const lastBrace = text.lastIndexOf('}');
       if (firstBrace !== -1 && lastBrace !== -1) {
         return JSON.parse(text.substring(firstBrace, lastBrace + 1));
       }
+    } catch (e3) {
+       // continue
+    }
 
+    // 4. Tenta encontrar Array [ ... ]
+    try {
       const firstBracket = text.indexOf('[');
       const lastBracket = text.lastIndexOf(']');
       if (firstBracket !== -1 && lastBracket !== -1) {
         return JSON.parse(text.substring(firstBracket, lastBracket + 1));
       }
-      
-      throw new Error("Formato JSON não identificado.");
-    } catch (e2) {
-      console.error("Falha no Parse JSON:", text);
-      throw new Error("Não foi possível processar a resposta da IA (Erro de Formatação).");
+    } catch (e4) {
+      // continue
     }
+    
+    console.error("Falha fatal no Parse JSON. Texto recebido:", text);
+    throw new Error("Não foi possível processar a resposta da IA (Erro de Formatação JSON).");
   }
 };
 
@@ -408,7 +417,11 @@ export const getInactionAnalysis = async (decision: string, monthlyCost: number)
 
 export const getLifestyleAudit = async (item: string, price: number): Promise<LifestyleAudit> => {
   const ai = getClient();
-  const prompt = `Auditoria de compra: "${item}" (R$${price}). É hedônico? Alternativa Pareto?`;
+  const prompt = `
+    Auditoria de compra hedônica para: "${item}" (R$${price}).
+    Identifique se é hedônico, dê um veredito (BUY, WAIT, DOWNGRADE) e sugira uma alternativa Pareto (80/20) mais barata.
+    Retorne JSON estrito.
+  `;
 
   try {
     const response = await ai.models.generateContent({
@@ -419,7 +432,14 @@ export const getLifestyleAudit = async (item: string, price: number): Promise<Li
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            paretoAlternative: { type: Type.OBJECT, properties: { name: { type: Type.STRING }, priceEstimate: { type: Type.NUMBER }, reasoning: { type: Type.STRING } } },
+            paretoAlternative: { 
+              type: Type.OBJECT, 
+              properties: { 
+                 name: { type: Type.STRING }, 
+                 priceEstimate: { type: Type.NUMBER }, 
+                 reasoning: { type: Type.STRING } 
+              } 
+            },
             verdict: { type: Type.STRING, enum: ["BUY", "WAIT", "DOWNGRADE"] }
           }
         }
@@ -428,13 +448,24 @@ export const getLifestyleAudit = async (item: string, price: number): Promise<Li
     const data = cleanAndParseJSON(response.text);
     const futureValue = price * Math.pow(1.07, 10);
     return {
-      hoursOfLifeLost: 0,
+      hoursOfLifeLost: 0, // Calculated on frontend
       futureValueLost: futureValue,
       paretoAlternative: data.paretoAlternative,
       verdict: data.verdict
     };
-  } catch (e) {
-    return { hoursOfLifeLost: 0, futureValueLost: 0, paretoAlternative: { name: "N/A", priceEstimate: 0, reasoning: "" }, verdict: "WAIT" };
+  } catch (e: any) {
+    console.error("Lifestyle Audit Error:", e);
+    // Return a graceful error object instead of crashing
+    return { 
+        hoursOfLifeLost: 0, 
+        futureValueLost: 0, 
+        paretoAlternative: { 
+            name: "Erro na Análise", 
+            priceEstimate: 0, 
+            reasoning: "A IA não conseguiu processar este item. Tente simplificar o nome." 
+        }, 
+        verdict: "WAIT" 
+    };
   }
 };
 
