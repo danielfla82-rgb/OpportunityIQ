@@ -1,5 +1,4 @@
 
-
 import { GoogleGenAI, Type } from "@google/genai";
 import type { Chat } from "@google/genai";
 import { 
@@ -16,7 +15,8 @@ import {
   SunkCostScenario,
   SkillAnalysis,
   InactionAnalysis,
-  CalculatedTHL
+  CalculatedTHL,
+  YearlyCompassData
 } from "../types";
 
 // --- CLIENT HELPER ---
@@ -632,5 +632,31 @@ export const getInactionAnalysis = async (decision: string, monthlyCost: number)
        intangibleCosts: ["Estresse", "Ansiedade"], 
        callToAction: "Decida agora." 
      };
+  }
+};
+
+export const getDashboardAlignmentAnalysis = async (timeData: any[], goals: YearlyCompassData): Promise<string> => {
+  const ai = getClient();
+  const timeSummary = timeData.map(t => `${t.name}: ${t.value.toFixed(1)}h`).join(', ');
+  const goalsSummary = `1: ${goals.goal1.text}, 2: ${goals.goal2.text}, 3: ${goals.goal3.text}`;
+  
+  const prompt = `
+    Atue como um estrategista essencialista.
+    Analise o alinhamento entre a rotina diária e as metas do usuário.
+    Rotina (24h): ${timeSummary}
+    Metas Anuais (Bússola): ${goalsSummary}
+    
+    Critique: O tempo está sendo gasto onde as metas exigem? Há contradição óbvia?
+    Seja curto (máx 2 frases). Ex: "Você quer correr uma maratona mas dedica 0h a treino. Sua prioridade real é o trabalho, não a meta."
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: prompt,
+    });
+    return response.text || "Sem dados suficientes para análise de alinhamento.";
+  } catch (error) {
+    return "O Oráculo está recalculando suas prioridades...";
   }
 };
