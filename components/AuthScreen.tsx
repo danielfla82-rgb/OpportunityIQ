@@ -114,13 +114,6 @@ const AuthScreen: React.FC<Props> = ({ onDemoLogin }) => {
             <h1 className="text-8xl md:text-9xl font-serif text-white tracking-tighter leading-none mb-2 mix-blend-overlay opacity-90">
                ZEUS
             </h1>
-            <div className="flex items-center justify-center gap-3">
-               <div className="h-px w-8 bg-emerald-500"></div>
-               <p className="text-emerald-400 uppercase tracking-[0.4em] text-[10px] font-bold shadow-emerald-500/50 drop-shadow-lg">
-                  Sistema Operacional v6.0
-               </p>
-               <div className="h-px w-8 bg-emerald-500"></div>
-            </div>
          </div>
 
          {/* FORM CONTAINER */}
@@ -216,13 +209,6 @@ const AuthScreen: React.FC<Props> = ({ onDemoLogin }) => {
                   <Activity className="w-3 h-3" /> Modo Demo
                </button>
             </div>
-         </div>
-
-         {/* STATUS BAR */}
-         <div className="text-center mt-12 opacity-40">
-            <p className="text-[9px] text-slate-400 uppercase tracking-[0.3em] font-mono">
-               Acesso Seguro • Encriptação 256-bit • {isSupabaseConfigured ? 'Online' : 'Offline'}
-            </p>
          </div>
       </div>
     </div>
