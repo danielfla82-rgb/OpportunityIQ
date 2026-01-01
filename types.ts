@@ -1,4 +1,5 @@
 
+
 export interface FinancialProfile {
   netIncome: number;
   contractHoursWeekly: number;
@@ -39,19 +40,6 @@ export interface AssetItem {
     maintenanceCostMonthlyEstimate: number;
     commentary: string;
   };
-}
-
-export interface SunkCostScenario {
-  id: string;
-  title: string;
-  description: string;
-  investedTimeMonths: number;
-  investedMoney: number;
-  projectedFutureCostMoney: number;
-  projectedFutureCostTime: number;
-  probabilityOfSuccess: number; // 0-100
-  aiAnalysis?: string;
-  decision?: 'ABANDON' | 'PIVOT' | 'PERSEVERE';
 }
 
 export interface ParetoResult {
@@ -104,20 +92,6 @@ export interface EnergyAuditItem {
   advice: string;
 }
 
-export interface SkillAnalysis {
-  isRealistic: boolean;
-  commentary: string;
-  marketRealityCheck: string;
-}
-
-export interface InactionAnalysis {
-  cumulativeCost6Months: number;
-  cumulativeCost1year: number;
-  cumulativeCost3years: number;
-  intangibleCosts: string[];
-  callToAction: string;
-}
-
 export interface LifestyleAudit {
   hoursOfLifeLost: number;
   futureValueLost: number; // if invested over 10 years
@@ -167,6 +141,30 @@ export interface YearlyCompassData {
   };
 }
 
+// Added Missing Interfaces
+export interface SunkCostScenario {
+  title: string;
+  description: string;
+  investedMoney?: number;
+  investedTimeMonths?: number;
+  projectedFutureCostMoney?: number;
+  projectedFutureCostTime?: number;
+}
+
+export interface SkillAnalysis {
+  isRealistic: boolean;
+  marketRealityCheck: string;
+  commentary: string;
+}
+
+export interface InactionAnalysis {
+  cumulativeCost6Months: number;
+  cumulativeCost1year: number;
+  cumulativeCost3years: number;
+  intangibleCosts: string[];
+  callToAction: string;
+}
+
 export enum AppView {
   DASHBOARD = 'DASHBOARD',
   THL_CALCULATOR = 'THL_CALCULATOR',
@@ -175,19 +173,14 @@ export enum AppView {
   DIAGNOSIS = 'DIAGNOSIS',
   YEARLY_GOALS = 'YEARLY_GOALS',
   DELEGATION = 'DELEGATION',
-  SUNK_COST = 'SUNK_COST',
-  NEGOTIATOR = 'NEGOTIATOR',
   PARETO = 'PARETO',
-  DEEP_WORK = 'DEEP_WORK',
   RAZORS = 'RAZORS',
   ENERGY_AUDIT = 'ENERGY_AUDIT',
-  SKILL_ROI = 'SKILL_ROI',
-  INACTION_CALC = 'INACTION_CALC',
   LIFESTYLE_INFLATOR = 'LIFESTYLE_INFLATOR',
-  SETTINGS = 'SETTINGS',
   DOCS = 'DOCS',
   BUG_TRACKER = 'BUG_TRACKER',
-  CHAT = 'CHAT'
+  CHAT = 'CHAT',
+  SETTINGS = 'SETTINGS'
 }
 
 export const STORAGE_KEY = 'oiq_user_data_v1';

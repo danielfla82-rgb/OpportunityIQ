@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { AssetItem } from '../types';
 import { analyzeAsset } from '../services/geminiService';
-import { Plus, Trash2, Building2, Car, Laptop, TrendingUp, TrendingDown, DollarSign, Wallet, Brain, Loader2, ArrowLeft, Star, History } from 'lucide-react';
+import { Trash2, Building2, Car, Laptop, TrendingUp, TrendingDown, Wallet, Brain, Loader2, ArrowLeft, Star, History, AlertCircle } from 'lucide-react';
 
 interface Props {
   assets: AssetItem[];
@@ -192,7 +192,8 @@ const AssetInventory: React.FC<Props> = ({ assets, setAssets, onBack }) => {
          {sortedAssets.map((asset) => {
             // Determine if asset is a "Keeper" (Appreciating or Stable)
             const isKeeper = asset.aiAnalysis?.depreciationTrend === 'APPRECIATING' || asset.aiAnalysis?.depreciationTrend === 'STABLE';
-            
+            const hasAnalysisError = asset.aiAnalysis?.commentary?.includes("Não foi possível") || asset.aiAnalysis?.commentary?.includes("Estimativa automática");
+
             return (
               <div key={asset.id} className="bg-slate-900 border border-slate-800 p-5 rounded-xl hover:border-emerald-500/30 transition-all group relative overflow-hidden">
                  {/* Keeper Highlight Background */}
@@ -216,11 +217,13 @@ const AssetInventory: React.FC<Props> = ({ assets, setAssets, onBack }) => {
                        <p className="text-sm text-slate-400 mb-2 pl-10">{asset.description}</p>
                        
                        {asset.aiAnalysis && (
-                          <div className="bg-slate-950/50 border border-slate-800 p-3 rounded-lg mt-3 text-sm ml-0 md:ml-10">
+                          <div className={`bg-slate-950/50 border p-3 rounded-lg mt-3 text-sm ml-0 md:ml-10 ${hasAnalysisError ? 'border-amber-900/30' : 'border-slate-800'}`}>
                              <div className="flex items-center gap-2 mb-1 text-indigo-400 text-[10px] font-bold uppercase tracking-wider">
                                 <Brain className="w-3 h-3" /> Análise do Oráculo
                              </div>
-                             <p className="text-slate-300 italic leading-relaxed text-xs">"{asset.aiAnalysis.commentary}"</p>
+                             <p className={`text-xs leading-relaxed italic ${hasAnalysisError ? 'text-amber-500/70' : 'text-slate-300'}`}>
+                                "{asset.aiAnalysis.commentary}"
+                             </p>
                              {asset.aiAnalysis.maintenanceCostMonthlyEstimate > 0 && (
                                 <div className="mt-2 text-red-400 text-xs flex items-center gap-1 font-medium bg-red-950/20 px-2 py-1 rounded w-fit border border-red-900/30">
                                    <AlertCircle className="w-3 h-3" /> Custo Oculto Est.: R$ {asset.aiAnalysis.maintenanceCostMonthlyEstimate}/mês
@@ -279,10 +282,5 @@ const AssetInventory: React.FC<Props> = ({ assets, setAssets, onBack }) => {
     </div>
   );
 };
-
-// Helper component for alert circle
-const AlertCircle = ({ className }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-);
 
 export default AssetInventory;

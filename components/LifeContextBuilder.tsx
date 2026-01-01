@@ -1,11 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
-import { LifeContext, ContextAnalysisResult, CalculatedTHL, AssetItem, AppView } from '../types';
+import { LifeContext, ContextAnalysisResult, CalculatedTHL, AssetItem, AppView, FinancialProfile } from '../types';
 import { analyzeLifeContext } from '../services/geminiService';
 import { Book, Car, Clock, Sparkles, Loader2, CheckCircle2, AlertTriangle, Moon, Sun, Dumbbell, Brain, Wallet, ChevronRight } from 'lucide-react';
 
 interface Props {
   thl: CalculatedTHL;
+  profile: FinancialProfile;
   initialContext: LifeContext | null;
   assets: AssetItem[]; 
   onAnalysisComplete: (result: ContextAnalysisResult, context: LifeContext) => void;
@@ -13,7 +14,7 @@ interface Props {
   onNavigate: (view: AppView) => void;
 }
 
-const LifeContextBuilder: React.FC<Props> = ({ thl, initialContext, assets, onAnalysisComplete, onUpdate, onNavigate }) => {
+const LifeContextBuilder: React.FC<Props> = ({ thl, profile, initialContext, assets, onAnalysisComplete, onUpdate, onNavigate }) => {
   const [routine, setRoutine] = useState(initialContext?.routineDescription || "");
   const [sleepHours, setSleepHours] = useState(initialContext?.sleepHours || 7);
   const [physicalMinutes, setPhysicalMinutes] = useState(initialContext?.physicalActivityMinutes || 0);
@@ -46,8 +47,8 @@ const LifeContextBuilder: React.FC<Props> = ({ thl, initialContext, assets, onAn
     if (!routine.trim()) return;
     
     setLoading(true);
-    // Pass entire assets array to analysis service
-    const result = await analyzeLifeContext(routine, assets, thl.realTHL, sleepHours);
+    // Pass entire assets array AND full profile to analysis service for better context
+    const result = await analyzeLifeContext(routine, assets, thl.realTHL, profile, sleepHours);
     
     const contextData: LifeContext = {
         routineDescription: routine,
@@ -239,8 +240,8 @@ const LifeContextBuilder: React.FC<Props> = ({ thl, initialContext, assets, onAn
                      <CheckCircle2 className="w-4 h-4" />
                   </div>
                   <div>
-                     <strong className="text-slate-200 block text-sm">Popular Matriz de Delegação</strong>
-                     <span className="text-slate-500 text-xs">Vai calcular automaticamente se vale a pena contratar faxina ou Uber baseado no seu relato.</span>
+                     <strong className="text-slate-200 block text-sm">Auditoria Forense</strong>
+                     <span className="text-slate-500 text-xs">A IA vai cruzar sua Renda Declarada com seus Bens para encontrar "estilo de vida insustentável" ou "alavancagem oculta".</span>
                   </div>
                </li>
                <li className="flex items-start gap-3">
@@ -248,8 +249,8 @@ const LifeContextBuilder: React.FC<Props> = ({ thl, initialContext, assets, onAn
                      <AlertTriangle className="w-4 h-4" />
                   </div>
                   <div>
-                     <strong className="text-slate-200 block text-sm">Analisar Passivos Ocultos</strong>
-                     <span className="text-slate-500 text-xs">Vai cruzar seu inventário de bens com sua renda para detectar fragilidades financeiras.</span>
+                     <strong className="text-slate-200 block text-sm">Detecção de Inconsistências</strong>
+                     <span className="text-slate-500 text-xs">Vai verificar se sua rotina (input de tempo) é compatível com sua meta financeira (output desejado).</span>
                   </div>
                </li>
                <li className="flex items-start gap-3">
@@ -257,8 +258,8 @@ const LifeContextBuilder: React.FC<Props> = ({ thl, initialContext, assets, onAn
                      <Moon className="w-4 h-4" />
                   </div>
                   <div>
-                     <strong className="text-slate-200 block text-sm">Cálculo de Tempo Líquido (24h)</strong>
-                     <span className="text-slate-500 text-xs">Vai cruzar seu sono, trabalho, treino e estudo para revelar sua verdadeira liberdade diária.</span>
+                     <strong className="text-slate-200 block text-sm">Cálculo de Matriz de Potência</strong>
+                     <span className="text-slate-500 text-xs">Determinará sua posição exata entre Escravidão e Soberania (Eixo X/Y).</span>
                   </div>
                </li>
             </ul>
@@ -269,7 +270,7 @@ const LifeContextBuilder: React.FC<Props> = ({ thl, initialContext, assets, onAn
                className="w-full mt-8 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-3 relative z-10"
             >
                {loading ? <Loader2 className="animate-spin w-6 h-6" /> : <Sparkles className="w-6 h-6" />}
-               {loading ? "Processando sua Vida..." : "Gerar Diagnóstico Nietzscheano"}
+               {loading ? "Iniciando Auditoria Neural..." : "Gerar Diagnóstico Nietzscheano"}
             </button>
          </div>
       </div>

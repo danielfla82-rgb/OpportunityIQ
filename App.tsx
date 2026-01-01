@@ -6,15 +6,10 @@ import { FinancialProfile, CalculatedTHL, DelegationItem, AppView, LifeContext, 
 import AuthScreen from './components/AuthScreen';
 import THLCalculator from './components/THLCalculator';
 import DelegationMatrix from './components/DelegationMatrix';
-import SunkCostSolver from './components/SunkCostSolver';
 import Dashboard from './components/Dashboard';
-import EssentialistNegotiator from './components/EssentialistNegotiator';
 import ParetoAnalyzer from './components/ParetoAnalyzer';
-import DeepWorkTimer from './components/DeepWorkTimer';
 import MentalRazors from './components/MentalRazors';
 import EnergyAudit from './components/EnergyAudit';
-import SkillROICalculator from './components/SkillROICalculator';
-import InactionCalculator from './components/InactionCalculator';
 import LifestyleInflator from './components/LifestyleInflator';
 import LifeContextBuilder from './components/LifeContextBuilder';
 import AssetInventory from './components/AssetInventory';
@@ -23,7 +18,7 @@ import Documentation from './components/Documentation';
 import BugTracker from './components/BugTracker';
 import SpecialistChat from './components/SpecialistChat';
 import YearlyGoals from './components/YearlyGoals';
-import { LayoutDashboard, Calculator, ListTodo, BrainCircuit, ShieldAlert, Target, Timer, Scale, Battery, TrendingUp, Snowflake, ShoppingBag, Menu, X, ChevronRight, BookUser, FileText, BookOpen, Bug, MessageSquare, Compass, LogOut, Database, Wallet, ChevronDown, Zap, Sparkles } from 'lucide-react';
+import { LayoutDashboard, Calculator, ListTodo, Target, Scale, Battery, ShoppingBag, Menu, X, BookUser, FileText, BookOpen, Bug, MessageSquare, Compass, LogOut, Wallet, ChevronDown, Sparkles } from 'lucide-react';
 
 const App: React.FC = () => {
   const [session, setSession] = useState<any>(null);
@@ -32,7 +27,7 @@ const App: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   // Sidebar Accordion State
-  const [openGroups, setOpenGroups] = useState<string[]>(['Principal', 'Financeiro']);
+  const [openGroups, setOpenGroups] = useState<string[]>(['Principal', 'Ferramentas']);
 
   const toggleGroup = (title: string) => {
     setOpenGroups(prev => 
@@ -60,9 +55,9 @@ const App: React.FC = () => {
   const [lifeContext, setLifeContext] = useState<LifeContext | null>(null);
   const [analysisResult, setAnalysisResult] = useState<ContextAnalysisResult | null>(null);
   const [yearCompass, setYearCompass] = useState<YearlyCompassData>({
-    goal1: { text: "", completed: false },
-    goal2: { text: "", completed: false },
-    goal3: { text: "", completed: false },
+    goal1: { text: "", indicator: "", completed: false },
+    goal2: { text: "", indicator: "", completed: false },
+    goal3: { text: "", indicator: "", completed: false },
     financialGoal: { targetMonthlyIncome: 0, targetTHL: 0, deadlineMonth: "" }
   });
 
@@ -271,24 +266,14 @@ const App: React.FC = () => {
       ]
     },
     {
-      title: 'Financeiro',
+      title: 'Ferramentas',
       items: [
         { id: AppView.ASSET_INVENTORY, label: 'Inventário de Bens', icon: Wallet },
         { id: AppView.DELEGATION, label: 'Matriz de Delegação', icon: ListTodo },
-        { id: AppView.SKILL_ROI, label: 'Alavancagem (ROI)', icon: TrendingUp },
         { id: AppView.LIFESTYLE_INFLATOR, label: 'Corretor Hedônico', icon: ShoppingBag },
-        { id: AppView.INACTION_CALC, label: 'Custo da Inação', icon: Snowflake },
-      ]
-    },
-    {
-      title: 'Filosofia',
-      items: [
-        { id: AppView.SUNK_COST, label: 'Custo Irrecuperável', icon: BrainCircuit },
-        { id: AppView.RAZORS, label: 'Oráculo das Navalhas', icon: Scale },
         { id: AppView.PARETO, label: 'Analisador 80/20', icon: Target },
-        { id: AppView.NEGOTIATOR, label: 'Negociador (Não)', icon: ShieldAlert },
+        { id: AppView.RAZORS, label: 'Oráculo das Navalhas', icon: Scale },
         { id: AppView.ENERGY_AUDIT, label: 'Matriz de Energia', icon: Battery },
-        { id: AppView.DEEP_WORK, label: 'Modo Deep Work', icon: Timer },
       ]
     },
     {
@@ -421,6 +406,7 @@ const App: React.FC = () => {
             {view === AppView.LIFE_CONTEXT && (
                <div className="p-6 md:p-12"><LifeContextBuilder 
                  thl={thlStats} 
+                 profile={profile}
                  initialContext={lifeContext}
                  assets={assets}
                  onAnalysisComplete={handleContextAnalysisComplete}
@@ -464,14 +450,6 @@ const App: React.FC = () => {
               <div className="p-6 md:p-12"><DelegationMatrix thl={thlStats} delegations={delegations} setDelegations={handleSetDelegations} /></div>
             )}
 
-            {view === AppView.SUNK_COST && (
-              <div className="p-6 md:p-12"><SunkCostSolver thl={thlStats} /></div>
-            )}
-            
-            {view === AppView.NEGOTIATOR && (
-              <div className="p-6 md:p-12"><EssentialistNegotiator /></div>
-            )}
-
             {view === AppView.PARETO && (
               <div className="p-6 md:p-12"><ParetoAnalyzer /></div>
             )}
@@ -484,20 +462,8 @@ const App: React.FC = () => {
               <div className="p-6 md:p-12"><EnergyAudit /></div>
             )}
 
-            {view === AppView.SKILL_ROI && (
-              <div className="p-6 md:p-12"><SkillROICalculator thl={thlStats} /></div>
-            )}
-
-            {view === AppView.INACTION_CALC && (
-              <div className="p-6 md:p-12"><InactionCalculator thl={thlStats} /></div>
-            )}
-
             {view === AppView.LIFESTYLE_INFLATOR && (
               <div className="p-6 md:p-12"><LifestyleInflator thl={thlStats} /></div>
-            )}
-
-            {view === AppView.DEEP_WORK && (
-              <div className="p-6 md:p-12"><DeepWorkTimer thl={thlStats} /></div>
             )}
 
             {view === AppView.DOCS && (

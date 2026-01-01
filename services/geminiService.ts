@@ -1,6 +1,23 @@
+
+
 import { GoogleGenAI, Type } from "@google/genai";
 import type { Chat } from "@google/genai";
-import { FinancialProfile, CalculatedTHL, SunkCostScenario, ParetoResult, RazorAnalysis, EnergyAuditItem, SkillAnalysis, PreMortemResult, TimeTravelResult, InactionAnalysis, LifestyleAudit, ContextAnalysisResult, NietzscheArchetype, AssetItem } from "../types";
+import { 
+  FinancialProfile, 
+  ParetoResult, 
+  RazorAnalysis, 
+  EnergyAuditItem, 
+  PreMortemResult, 
+  TimeTravelResult, 
+  LifestyleAudit, 
+  ContextAnalysisResult, 
+  NietzscheArchetype, 
+  AssetItem,
+  SunkCostScenario,
+  SkillAnalysis,
+  InactionAnalysis,
+  CalculatedTHL
+} from "../types";
 
 // --- CLIENT HELPER ---
 const getApiKey = () => {
@@ -103,12 +120,13 @@ export const analyzeAsset = async (name: string, description: string, value: num
   const ai = getClient();
   const prompt = `
     Analise este bem patrimonial: "${name}" (${description}), comprado em ${year} por R$${value}.
-    Estime:
+    Seja tolerante com erros de digitação no nome do produto (Ex: "Samsumg" = "Samsung").
+    Estime com base no mercado brasileiro atual:
     1. Valor atual de mercado (Brasil).
     2. Tendência (Valorizando/Depreciando).
-    3. Custo mensal oculto estimado (manutenção, impostos, depreciação).
+    3. Custo mensal oculto estimado (manutenção, impostos, depreciação, custo de oportunidade).
     4. Liquidez (0 a 100, onde 100 é dinheiro na mão).
-    Retorne JSON.
+    Retorne JSON válido. Se não identificar, faça uma estimativa conservadora baseada na categoria.
   `;
 
   try {
@@ -133,34 +151,12 @@ export const analyzeAsset = async (name: string, description: string, value: num
   } catch (error) {
     console.error("Asset Analysis Error", error);
     return {
-      currentValueEstimated: value,
-      depreciationTrend: 'STABLE',
+      currentValueEstimated: value * 0.8, // Fallback estimate
+      depreciationTrend: 'DEPRECIATING',
       liquidityScore: 50,
-      maintenanceCostMonthlyEstimate: 0,
-      commentary: "Não foi possível analisar este ativo no momento."
+      maintenanceCostMonthlyEstimate: value * 0.01,
+      commentary: "Estimativa automática (IA indisponível)."
     };
-  }
-};
-
-export const getSunkCostAnalysis = async (scenario: SunkCostScenario, thl: CalculatedTHL): Promise<string> => {
-  const ai = getClient();
-  const prompt = `
-    Atue como um Filósofo Estrategista. Analise este dilema de custo irrecuperável.
-    Projeto: "${scenario.title}" (${scenario.description}).
-    Dados: THL R$ ${thl.realTHL.toFixed(2)}/h. Investido: ${scenario.investedTimeMonths} meses, R$ ${scenario.investedMoney}. 
-    Futuro estimado: R$ ${scenario.projectedFutureCostMoney} e ${scenario.projectedFutureCostTime} horas.
-    Use "Amor Fati" e "Custo de Oportunidade". Dê um veredito curto e brutal (máx 2 parágrafos).
-  `;
-
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: prompt,
-    });
-    return response.text || "O Oráculo permaneceu em silêncio.";
-  } catch (error: any) {
-    console.error("AI Error:", error);
-    return `Erro ao consultar o oráculo: ${error.message || 'Falha desconhecida'}`;
   }
 };
 
@@ -200,32 +196,6 @@ export const getTimeWisdom = async (): Promise<string> => {
     return response.text || "Amor Fati.";
   } catch (error) {
     return "Torna-te quem tu és.";
-  }
-};
-
-export const getRefusalScripts = async (request: string): Promise<{diplomatic: string, direct: string, alternative: string}> => {
-  const ai = getClient();
-  const prompt = `Gere 3 scripts de recusa para: "${request}". 1. Diplomático, 2. Direto (Nietzscheano), 3. Alternativa.`;
-
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            diplomatic: { type: Type.STRING },
-            direct: { type: Type.STRING },
-            alternative: { type: Type.STRING }
-          }
-        }
-      }
-    });
-    return cleanAndParseJSON(response.text);
-  } catch (error) {
-    return { diplomatic: "Erro.", direct: "Erro.", alternative: "Erro." };
   }
 };
 
@@ -365,64 +335,6 @@ export const getEnergyAudit = async (tasks: string): Promise<EnergyAuditItem[]> 
   }
 };
 
-export const getSkillAnalysis = async (skill: string, currentTHL: number, increasePercent: number): Promise<SkillAnalysis> => {
-  const ai = getClient();
-  const prompt = `Analise ROI de aprender "${skill}". THL atual ${currentTHL}, Meta +${increasePercent}%.`;
-
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            isRealistic: { type: Type.BOOLEAN },
-            commentary: { type: Type.STRING },
-            marketRealityCheck: { type: Type.STRING }
-          }
-        }
-      }
-    });
-    return cleanAndParseJSON(response.text);
-  } catch (error) {
-    return { isRealistic: false, commentary: "Erro ao analisar.", marketRealityCheck: "Verifique conexão." };
-  }
-};
-
-export const getInactionAnalysis = async (decision: string, monthlyCost: number): Promise<InactionAnalysis> => {
-  const ai = getClient();
-  const prompt = `Analise a inação de: "${decision}" (Custo mensal R$${monthlyCost}).`;
-
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            intangibleCosts: { type: Type.ARRAY, items: { type: Type.STRING } },
-            callToAction: { type: Type.STRING }
-          }
-        }
-      }
-    });
-    const data = cleanAndParseJSON(response.text);
-    return {
-      cumulativeCost6Months: monthlyCost * 6,
-      cumulativeCost1year: monthlyCost * 12,
-      cumulativeCost3years: monthlyCost * 36,
-      intangibleCosts: data.intangibleCosts || [],
-      callToAction: data.callToAction || "Aja."
-    };
-  } catch (error) {
-    return { cumulativeCost6Months: 0, cumulativeCost1year: 0, cumulativeCost3years: 0, intangibleCosts: [], callToAction: "Erro" };
-  }
-};
-
 export const getLifestyleAudit = async (item: string, price: number): Promise<LifestyleAudit> => {
   const ai = getClient();
   const prompt = `
@@ -477,7 +389,7 @@ export const getLifestyleAudit = async (item: string, price: number): Promise<Li
   }
 };
 
-export const analyzeLifeContext = async (routine: string, assets: string | AssetItem[], thl: number, sleepHours: number = 7): Promise<ContextAnalysisResult> => {
+export const analyzeLifeContext = async (routine: string, assets: string | AssetItem[], thl: number, profile: FinancialProfile, sleepHours: number = 7): Promise<ContextAnalysisResult> => {
   const ai = getClient();
   
   // Format assets for the prompt depending on input type
@@ -496,35 +408,31 @@ export const analyzeLifeContext = async (routine: string, assets: string | Asset
 
   // SYSTEM INSTRUCTION FOR ROBUST MATRIX CALCULATION
   const prompt = `
-  Você é um Auditor de Eficiência Humana e Filósofo Nietzscheano.
-  Analise friamente os dados abaixo e calcule a Matriz de Potência (X: Autonomia, Y: Eficiência).
+  Você é o Auditor Central do OpportunityIQ. Seu papel é realizar uma Auditoria Forense Existencial.
   
-  DADOS DO OPERADOR:
-  - Rotina: "${routine}"
-  - Inventário de Bens (Ativos/Passivos):
-    ${assetsString}
+  === DADOS DO ALVO ===
+  1. PERFIL FINANCEIRO:
+     - Renda Líquida Atual: R$ ${profile.netIncome} / mês
+     - Renda Aspiracional: R$ ${profile.aspirationalIncome} / mês (GAP: ${profile.aspirationalIncome - profile.netIncome})
+     - THL (Valor da Hora): R$ ${thl.toFixed(2)}
   
-  - THL (Taxa Horária Líquida): R$${thl.toFixed(2)}/h
-  - Sono Médio: ${sleepHours}h/dia (Impacto Biológico)
-
-  REGRA DE CÁLCULO DA MATRIZ (0-100):
+  2. ROTINA DECLARADA (INPUT DE TEMPO):
+     "${routine}"
+     - Sono Médio: ${sleepHours}h
   
-  EIXO X: AUTONOMIA (Controle sobre o Destino)
-  - 0-30: Escravo da rotina, dívidas altas (veja o inventário), horário fixo rígido.
-  - 31-60: Tem alguma flexibilidade, mas troca tempo por dinheiro diretamente.
-  - 61-80: Possui ativos geradores de renda ou controle total da agenda.
-  - 81-100: Independência Financeira ou capacidade de dizer "Não" para tudo.
-  * Penalize: Bens com alto custo de manutenção (Passivos disfarçados de ativos).
-  * Bonifique: Investimentos líquidos.
+  3. ATIVOS (INVENTÁRIO):
+     ${assetsString}
 
-  EIXO Y: EFICIÊNCIA (Output por Input - Alavancagem)
-  - 0-30: Ocupado, não produtivo. Tarefas manuais (limpeza, trânsito), distrações.
-  - 31-60: Organizado, mas linear. Trabalha muito para ganhar proporcionalmente.
-  - 61-100: Alta delegação, automação, foco no "Vital Few" (Pareto).
-  * PENALIDADE BIOLÓGICA OBRIGATÓRIA: Se sono < 6h, a Eficiência (Y) NÃO PODE passar de 60.
+  === MISSÃO ===
+  Forneça um Resumo Executivo BRUTAL e DIRETO (máx 3 frases). Exemplo: "Você vive como rico mas ganha como pobre. Sua rotina é escrava do trânsito."
+  Detecte INCONSISTÊNCIAS (Dissonância Cognitiva, Alavancagem Negativa).
+  
+  === REGRAS DE CÁLCULO DA MATRIZ (0-100) ===
+  EIXO X: AUTONOMIA
+  EIXO Y: EFICIÊNCIA
 
-  SAÍDA ESPERADA (JSON):
-  Seja duro. Não dê notas altas para quem está apenas "ocupado" ou comprando passivos.
+  === SAÍDA ESPERADA (JSON) ===
+  Garanta que o campo "summary" NUNCA venha vazio ou genérico. Se os dados forem poucos, assuma "Dados insuficientes para diagnóstico completo, mas atenção à falta de clareza."
   `;
 
   try {
@@ -592,5 +500,137 @@ export const analyzeLifeContext = async (routine: string, assets: string | Asset
       eternalReturnScore: 0, eternalReturnAnalysis: "Indisponível",
       matrixCoordinates: { x: 50, y: 50, quadrantLabel: "Erro de Conexão" }
     };
+  }
+};
+
+// --- NEW FUNCTION IMPLEMENTATIONS ---
+
+export const getSunkCostAnalysis = async (scenario: SunkCostScenario, thl: CalculatedTHL): Promise<string> => {
+  const ai = getClient();
+  const prompt = `
+    Analise este cenário de Custo Irrecuperável (Sunk Cost Fallacy):
+    Projeto: "${scenario.title}"
+    Descrição do apego: "${scenario.description}"
+    Já investido: R$${scenario.investedMoney || 0} e ${scenario.investedTimeMonths || 0} meses.
+    Custo Futuro Estimado: R$${scenario.projectedFutureCostMoney || 0} e ${scenario.projectedFutureCostTime || 0} horas.
+    
+    THL do Usuário (Valor da Hora): R$${thl.realTHL.toFixed(2)}.
+
+    Calcule o prejuízo real de continuar vs parar.
+    Use a filosofia "Amor Fati" e racionalidade econômica.
+    Seja brutalmente honesto. Dê um veredito em texto corrido (Markdown).
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: prompt,
+    });
+    return response.text || "Sem resposta.";
+  } catch (error) {
+    return "Erro ao analisar custos.";
+  }
+};
+
+export const getRefusalScripts = async (request: string): Promise<{diplomatic: string, direct: string, alternative: string}> => {
+  const ai = getClient();
+  const prompt = `
+    Crie 3 scripts para recusar este pedido/convite: "${request}".
+    1. Diplomático (Manter a relação).
+    2. Direto (Essencialista puro).
+    3. Alternativa (Negociar termos).
+    Retorne JSON.
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            diplomatic: { type: Type.STRING },
+            direct: { type: Type.STRING },
+            alternative: { type: Type.STRING }
+          }
+        }
+      }
+    });
+    return cleanAndParseJSON(response.text);
+  } catch (error) {
+    return { diplomatic: "Não posso.", direct: "Não.", alternative: "Talvez depois." };
+  }
+};
+
+export const getSkillAnalysis = async (skillName: string, currentTHL: number, estimatedIncreasePct: number): Promise<SkillAnalysis> => {
+  const ai = getClient();
+  const prompt = `
+    Analise o ROI de aprender: "${skillName}".
+    THL Atual: R$${currentTHL}. Expectativa de aumento: ${estimatedIncreasePct}%.
+    O mercado paga isso? É realista?
+    Retorne JSON com validação de realidade e comentário curto.
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            isRealistic: { type: Type.BOOLEAN },
+            marketRealityCheck: { type: Type.STRING },
+            commentary: { type: Type.STRING }
+          }
+        }
+      }
+    });
+    return cleanAndParseJSON(response.text);
+  } catch (error) {
+    return { isRealistic: true, marketRealityCheck: "Erro na análise.", commentary: "Considere pesquisar mais." };
+  }
+};
+
+export const getInactionAnalysis = async (decision: string, monthlyCost: number): Promise<InactionAnalysis> => {
+  const ai = getClient();
+  const prompt = `
+    Calcule o custo da inação para: "${decision}".
+    Custo mensal estimado (financeiro + emocional): R$${monthlyCost}.
+    Projete custos acumulados (6 meses, 1 ano, 3 anos).
+    Liste custos intangíveis.
+    Crie um Call to Action agressivo.
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            cumulativeCost6Months: { type: Type.NUMBER },
+            cumulativeCost1year: { type: Type.NUMBER },
+            cumulativeCost3years: { type: Type.NUMBER },
+            intangibleCosts: { type: Type.ARRAY, items: { type: Type.STRING } },
+            callToAction: { type: Type.STRING }
+          }
+        }
+      }
+    });
+    return cleanAndParseJSON(response.text);
+  } catch (error) {
+     return { 
+       cumulativeCost6Months: monthlyCost * 6, 
+       cumulativeCost1year: monthlyCost * 12, 
+       cumulativeCost3years: monthlyCost * 36, 
+       intangibleCosts: ["Estresse", "Ansiedade"], 
+       callToAction: "Decida agora." 
+     };
   }
 };

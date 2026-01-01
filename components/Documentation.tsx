@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { BookOpen, Calculator, Brain, Sword, Compass, MessageSquare, CloudLightning, Lock, Wallet, Database, Copy, Check } from 'lucide-react';
+import { BookOpen, Calculator, Brain, Sword, Compass, MessageSquare, Lock, Wallet, Database, Copy, Check } from 'lucide-react';
 
 const Documentation: React.FC = () => {
   const [copied, setCopied] = useState(false);
@@ -194,7 +194,7 @@ create trigger on_auth_user_created
           <div>
             <h4 className="font-serif text-lg text-white mb-1">Amor Fati (Amor ao Destino)</h4>
             <p className="text-slate-400 text-sm leading-relaxed">
-              Utilizado na ferramenta <strong>Custo Irrecuperável</strong>. A ideia não é apenas aceitar as perdas passadas, mas abraçá-las como necessárias para quem você é hoje. O ressentimento com o dinheiro ou tempo perdido paralisa a ação. O Amor Fati liberta a "Vontade de Potência" para agir no agora.
+              Aceitar a realidade é o primeiro passo para mudá-la. O ressentimento com perdas passadas paralisa a ação. O Amor Fati liberta a "Vontade de Potência" para agir no agora.
             </p>
           </div>
           <div className="border-t border-slate-800 pt-4">
@@ -264,16 +264,8 @@ create trigger on_auth_user_created
               <p className="text-xs text-slate-400">Combate o consumismo convertendo preços em "Horas de Vida Perdidas" (baseado na sua THL) e sugerindo alternativas Pareto.</p>
            </div>
            <div className="p-4 rounded-lg bg-slate-900 border border-slate-800">
-              <h4 className="font-bold text-white mb-1">Negociador Essencialista</h4>
-              <p className="text-xs text-slate-400">Gera scripts para dizer "Não" sem queimar pontes, protegendo seu tempo para o que é vital.</p>
-           </div>
-           <div className="p-4 rounded-lg bg-slate-900 border border-slate-800">
               <h4 className="font-bold text-white mb-1">Oráculo das Navalhas</h4>
               <p className="text-xs text-slate-400">Analisa dilemas complexos usando Navalha de Occam, Via Negativa e Minimização de Arrependimento.</p>
-           </div>
-           <div className="p-4 rounded-lg bg-slate-900 border border-slate-800">
-              <h4 className="font-bold text-white mb-1">Pre-Mortem</h4>
-              <p className="text-xs text-slate-400">Exercício estoico. Imagine que o projeto já falhou e trabalhe de trás para frente para prevenir as causas.</p>
            </div>
         </div>
       </section>
