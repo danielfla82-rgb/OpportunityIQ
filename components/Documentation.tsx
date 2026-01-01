@@ -77,10 +77,13 @@ create policy "Users can all own context" on life_contexts for all using (auth.u
 create table public.year_compass (
   user_id uuid references auth.users not null primary key,
   goal1_text text,
+  goal1_indicator text,
   goal1_completed boolean default false,
   goal2_text text,
+  goal2_indicator text,
   goal2_completed boolean default false,
   goal3_text text,
+  goal3_indicator text,
   goal3_completed boolean default false,
   financial_target_income numeric,
   financial_deadline text,

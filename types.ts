@@ -157,9 +157,9 @@ export interface ContextAnalysisResult {
 }
 
 export interface YearlyCompassData {
-  goal1: { text: string; completed: boolean };
-  goal2: { text: string; completed: boolean };
-  goal3: { text: string; completed: boolean };
+  goal1: { text: string; indicator: string; completed: boolean };
+  goal2: { text: string; indicator: string; completed: boolean };
+  goal3: { text: string; indicator: string; completed: boolean };
   financialGoal: {
     targetMonthlyIncome: number;
     targetTHL: number;

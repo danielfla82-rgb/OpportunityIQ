@@ -19,9 +19,9 @@ const DEFAULT_PROFILE: FinancialProfile = {
 };
 
 const DEFAULT_COMPASS: YearlyCompassData = {
-  goal1: { text: "", completed: false },
-  goal2: { text: "", completed: false },
-  goal3: { text: "", completed: false },
+  goal1: { text: "", indicator: "", completed: false },
+  goal2: { text: "", indicator: "", completed: false },
+  goal3: { text: "", indicator: "", completed: false },
   financialGoal: { targetMonthlyIncome: 0, targetTHL: 0, deadlineMonth: "" }
 };
 
@@ -112,9 +112,9 @@ const MOCK_DATA: FullUserData = {
     }
   },
   yearCompass: {
-    goal1: { text: "Atingir R$ 100k/mês de Faturamento", completed: false },
-    goal2: { text: "Delegar 100% do operacional da empresa", completed: false },
-    goal3: { text: "Completar um Ironman 70.3", completed: true },
+    goal1: { text: "Atingir R$ 100k/mês de Faturamento", indicator: "Faturamento mensal recorrente > 100k", completed: false },
+    goal2: { text: "Delegar 100% do operacional da empresa", indicator: "Menos de 2h/semana em tarefas manuais", completed: false },
+    goal3: { text: "Completar um Ironman 70.3", indicator: "Cruzar a linha de chegada < 6h", completed: true },
     financialGoal: { targetMonthlyIncome: 80000, targetTHL: 500, deadlineMonth: "Dezembro 2025" }
   }
 };
@@ -202,7 +202,7 @@ export const dataService = {
       id: d.id,
       name: d.name,
       cost: Number(d.cost),
-      hoursSaved: Number(d.hours_saved),
+      hours_saved: Number(d.hours_saved),
       frequency: d.frequency,
       category: d.category,
       archetype: d.archetype
@@ -250,9 +250,21 @@ export const dataService = {
     } : null;
 
     const yearCompass: YearlyCompassData = compassData ? {
-      goal1: { text: compassData.goal1_text || "", completed: compassData.goal1_completed },
-      goal2: { text: compassData.goal2_text || "", completed: compassData.goal2_completed },
-      goal3: { text: compassData.goal3_text || "", completed: compassData.goal3_completed },
+      goal1: { 
+          text: compassData.goal1_text || "", 
+          indicator: compassData.goal1_indicator || "",
+          completed: compassData.goal1_completed 
+      },
+      goal2: { 
+          text: compassData.goal2_text || "", 
+          indicator: compassData.goal2_indicator || "",
+          completed: compassData.goal2_completed 
+      },
+      goal3: { 
+          text: compassData.goal3_text || "", 
+          indicator: compassData.goal3_indicator || "",
+          completed: compassData.goal3_completed 
+      },
       financialGoal: {
         targetMonthlyIncome: Number(compassData.financial_target_income),
         targetTHL: 0,
@@ -268,9 +280,6 @@ export const dataService = {
    */
   saveProfile: async (userId: string, profile: FinancialProfile) => {
     if (!isSupabaseConfigured || isDemo(userId)) {
-        // No modo demo, não salvamos persistente para não estragar a experiência de refresh
-        // Mas se fosse um offline real, salvaríamos no local storage.
-        // Como é "Showcase", vamos salvar local apenas para a sessão atual funcionar
         if (!isDemo(userId)) saveLocalData({ profile });
         return { error: null };
     }
@@ -295,10 +304,13 @@ export const dataService = {
     return supabase.from('year_compass').upsert({
       user_id: userId,
       goal1_text: data.goal1.text,
+      goal1_indicator: data.goal1.indicator,
       goal1_completed: data.goal1.completed,
       goal2_text: data.goal2.text,
+      goal2_indicator: data.goal2.indicator,
       goal2_completed: data.goal2.completed,
       goal3_text: data.goal3.text,
+      goal3_indicator: data.goal3.indicator,
       goal3_completed: data.goal3.completed,
       financial_target_income: data.financialGoal.targetMonthlyIncome,
       financial_deadline: data.financialGoal.deadlineMonth,

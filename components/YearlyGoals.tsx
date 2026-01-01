@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { YearlyCompassData, CalculatedTHL } from '../types';
-import { Compass, Target, DollarSign, CheckCircle2, Circle, Mountain, Flag, Calendar, Rocket, Crown } from 'lucide-react';
+import { Compass, Target, DollarSign, CheckCircle2, Circle, Mountain, Flag, Calendar, Rocket, Crown, BarChart2 } from 'lucide-react';
 
 interface Props {
   data: YearlyCompassData;
@@ -22,6 +22,13 @@ const YearlyGoals: React.FC<Props> = ({ data, thl, onUpdate }) => {
     });
   };
 
+  const handleGoalIndicatorChange = (goalKey: 'goal1' | 'goal2' | 'goal3', indicator: string) => {
+    onUpdate({
+      ...data,
+      [goalKey]: { ...data[goalKey], indicator }
+    });
+  };
+
   const toggleGoalCompletion = (goalKey: 'goal1' | 'goal2' | 'goal3') => {
     onUpdate({
       ...data,
@@ -30,26 +37,21 @@ const YearlyGoals: React.FC<Props> = ({ data, thl, onUpdate }) => {
   };
 
   const handleFinancialChange = (field: 'targetMonthlyIncome' | 'deadlineMonth', value: any) => {
-     // Auto calculate Target THL based on current work hours structure
-     // If user changes target income, we estimate the THL needed
      let newFinancial = { ...data.financialGoal, [field]: value };
-     
-     if (field === 'targetMonthlyIncome') {
-        const income = parseFloat(value) || 0;
-        // Avoid division by zero from stats
-        const hours = thl.monthlyTotalHours > 0 ? thl.monthlyTotalHours : 160; 
-        newFinancial.targetTHL = income / hours;
-     }
-
      onUpdate({ ...data, financialGoal: newFinancial });
   };
 
-  // Calculate Progress for Financial Goal
+  // --- DYNAMIC CALCULATIONS ---
+  const hoursBasis = thl.monthlyTotalHours > 0 ? thl.monthlyTotalHours : 173.2;
+  
+  const targetTHLDisplay = data.financialGoal.targetMonthlyIncome > 0 
+      ? data.financialGoal.targetMonthlyIncome / hoursBasis 
+      : 0;
+
   const incomeProgress = data.financialGoal.targetMonthlyIncome > 0 
     ? (thl.realTHL * thl.monthlyTotalHours / data.financialGoal.targetMonthlyIncome) * 100 
     : 0;
 
-  // Icons and Labels Configuration
   const goalIcons = [Mountain, Rocket, Crown];
   const goalLabels = ["A Montanha", "A Alavanca", "A Coroa"];
 
@@ -63,7 +65,7 @@ const YearlyGoals: React.FC<Props> = ({ data, thl, onUpdate }) => {
         </div>
         <h2 className="text-3xl font-serif text-slate-100">Bússola Anual</h2>
         <p className="text-slate-400 mt-2 max-w-lg mx-auto">
-           "Quem tem um 'porquê' enfrenta qualquer 'como'." Defina suas 3 Grandes Pedras e seu Norte Financeiro.
+           "Quem tem um 'porquê' enfrenta qualquer 'como'." Defina suas 3 Grandes Pedras e como você medirá o sucesso.
         </p>
       </div>
 
@@ -114,7 +116,7 @@ const YearlyGoals: React.FC<Props> = ({ data, thl, onUpdate }) => {
                  <div className="bg-emerald-950/20 border border-emerald-900/50 rounded-xl p-4 mt-auto">
                     <div className="flex justify-between items-end mb-2">
                        <span className="text-xs text-emerald-400/70 uppercase">THL Necessária</span>
-                       <span className="text-xl font-mono text-emerald-400">R$ {data.financialGoal.targetTHL.toFixed(2)}/h</span>
+                       <span className="text-xl font-mono text-emerald-400">R$ {targetTHLDisplay.toFixed(2)}/h</span>
                     </div>
                     
                     <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden mb-2">
@@ -147,7 +149,7 @@ const YearlyGoals: React.FC<Props> = ({ data, thl, onUpdate }) => {
                        ${goal.completed ? 'border-indigo-500/30 bg-indigo-950/10' : 'border-slate-800 hover:border-slate-700'}
                     `}
                  >
-                    <div className="flex items-start gap-4">
+                    <div className="flex items-start gap-4 mb-4">
                        <div className="mt-1">
                           <button 
                              onClick={() => toggleGoalCompletion(key)}
@@ -183,6 +185,21 @@ const YearlyGoals: React.FC<Props> = ({ data, thl, onUpdate }) => {
                              disabled={goal.completed}
                           />
                        </div>
+                    </div>
+
+                    {/* Indicator Field */}
+                    <div className={`mt-4 pl-12 border-t border-slate-800/50 pt-4 transition-opacity ${goal.completed ? 'opacity-50' : 'opacity-100'}`}>
+                        <label className="text-[10px] text-indigo-400 uppercase tracking-widest font-bold mb-2 flex items-center gap-1">
+                           <BarChart2 className="w-3 h-3" /> Indicador de Sucesso (KPI)
+                        </label>
+                        <input 
+                           type="text"
+                           className="w-full bg-slate-950/50 border border-slate-800 rounded-lg py-2 px-3 text-sm text-slate-300 focus:border-indigo-500 outline-none placeholder:text-slate-700"
+                           placeholder="Ex: 150 check-ins na academia; 80% de acerto no simulado"
+                           value={goal.indicator || ''}
+                           onChange={(e) => handleGoalIndicatorChange(key, e.target.value)}
+                           disabled={goal.completed}
+                        />
                     </div>
                     
                     {/* Decorative element for incomplete goals */}
