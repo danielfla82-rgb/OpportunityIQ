@@ -1,14 +1,15 @@
 
 import { supabase, isSupabaseConfigured } from './supabaseClient';
-import { FinancialProfile, DelegationItem, LifeContext, YearlyCompassData, ContextAnalysisResult, AssetItem, STORAGE_KEY } from '../types';
+import { FinancialProfile, DelegationItem, LifeContext, YearlyCompassData, ContextAnalysisResult, AssetItem, MonthlyNote, STORAGE_KEY } from '../types';
 
 export interface FullUserData {
   profile: FinancialProfile;
   delegations: DelegationItem[];
-  assets: AssetItem[]; // NEW
+  assets: AssetItem[]; 
   lifeContext: LifeContext | null;
   analysisResult: ContextAnalysisResult | null;
   yearCompass: YearlyCompassData;
+  monthlyNotes: MonthlyNote[]; // NEW
 }
 
 const DEFAULT_PROFILE: FinancialProfile = {
@@ -116,7 +117,10 @@ const MOCK_DATA: FullUserData = {
     goal2: { text: "Delegar 100% do operacional da empresa", indicator: "Menos de 2h/semana em tarefas manuais", completed: false },
     goal3: { text: "Completar um Ironman 70.3", indicator: "Cruzar a linha de chegada < 6h", completed: true },
     financialGoal: { targetMonthlyIncome: 80000, targetTHL: 500, deadlineMonth: "Dezembro 2025" }
-  }
+  },
+  monthlyNotes: [
+    { month: 1, year: 2025, content: "Janeiro: Foco total em aumentar a THL. Cortei reuniões inúteis.", updatedAt: new Date().toISOString() }
+  ]
 };
 
 // --- Local Storage Helpers (Fallback) ---
@@ -153,7 +157,8 @@ export const dataService = {
          assets: data.assets || [],
          lifeContext: data.lifeContext || null,
          analysisResult: data.analysisResult || null,
-         yearCompass: data.yearCompass || DEFAULT_COMPASS
+         yearCompass: data.yearCompass || DEFAULT_COMPASS,
+         monthlyNotes: data.monthlyNotes || []
        };
     }
 
@@ -189,6 +194,12 @@ export const dataService = {
       .select('*')
       .eq('user_id', userId)
       .single();
+
+    // 6. Monthly Notes (NEW)
+    const { data: notesData } = await supabase
+      .from('monthly_notes')
+      .select('*')
+      .eq('user_id', userId);
 
     // Mapping Database to Types
     const profile: FinancialProfile = profileData ? {
@@ -252,27 +263,35 @@ export const dataService = {
     const yearCompass: YearlyCompassData = compassData ? {
       goal1: { 
           text: compassData.goal1_text || "", 
-          indicator: compassData.goal1_indicator || "",
+          indicator: compassData.goal1_indicator || "", 
           completed: compassData.goal1_completed 
       },
       goal2: { 
           text: compassData.goal2_text || "", 
-          indicator: compassData.goal2_indicator || "",
+          indicator: compassData.goal2_indicator || "", 
           completed: compassData.goal2_completed 
       },
       goal3: { 
           text: compassData.goal3_text || "", 
-          indicator: compassData.goal3_indicator || "",
+          indicator: compassData.goal3_indicator || "", 
           completed: compassData.goal3_completed 
       },
       financialGoal: {
         targetMonthlyIncome: Number(compassData.financial_target_income),
         targetTHL: 0,
-        deadlineMonth: compassData.financial_deadline || ""
+        deadlineMonth: compassData.financial_deadline || "" 
       }
     } : DEFAULT_COMPASS;
 
-    return { profile, delegations, assets, lifeContext, analysisResult, yearCompass };
+    const monthlyNotes: MonthlyNote[] = (notesData || []).map((n: any) => ({
+      id: n.id,
+      month: n.month,
+      year: n.year,
+      content: n.content,
+      updatedAt: n.updated_at
+    }));
+
+    return { profile, delegations, assets, lifeContext, analysisResult, yearCompass, monthlyNotes };
   },
 
   /**
@@ -345,6 +364,58 @@ export const dataService = {
     }
 
     return supabase.from('life_contexts').upsert(payload);
+  },
+
+  /**
+   * Save a Monthly Note
+   */
+  saveNote: async (userId: string, note: MonthlyNote) => {
+    if (!isSupabaseConfigured || isDemo(userId)) {
+      if (!isDemo(userId)) {
+        const current = getLocalData();
+        const notes = current.monthlyNotes || [];
+        // Remove existing note for that month/year if exists
+        const filtered = notes.filter((n: MonthlyNote) => !(n.month === note.month && n.year === note.year));
+        saveLocalData({ monthlyNotes: [...filtered, note] });
+      }
+      return { error: null };
+    }
+
+    // Using Upsert based on composite key logic via SQL policies or ensuring uniqueness in application logic
+    // Supabase needs a unique constraint or primary key to upsert. 
+    // Assuming we don't have a unique constraint on (user_id, month, year) yet in SQL, we can try to insert/update based on ID or select first.
+    // Better strategy: We can assume the frontend passes an ID if it exists, or we query first.
+    // However, simplest "upsert" for this logic without unique constraint is DELETE then INSERT, or use a Match query.
+    
+    // Efficient strategy: Use `upsert` matching on a unique constraint if we added one, 
+    // BUT since I can't guarantee the user ran a complex migration with constraints, 
+    // I will use a SELECT -> UPDATE/INSERT pattern to be safe, or just insert.
+    
+    // Let's rely on the client knowing the ID if it was loaded, OR check existence.
+    const { data: existing } = await supabase
+        .from('monthly_notes')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('month', note.month)
+        .eq('year', note.year)
+        .single();
+    
+    if (existing) {
+       return supabase
+         .from('monthly_notes')
+         .update({ content: note.content, updated_at: new Date().toISOString() })
+         .eq('id', existing.id);
+    } else {
+       return supabase
+         .from('monthly_notes')
+         .insert({
+            user_id: userId,
+            month: note.month,
+            year: note.year,
+            content: note.content,
+            updated_at: new Date().toISOString()
+         });
+    }
   },
 
   /**

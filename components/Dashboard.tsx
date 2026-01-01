@@ -45,15 +45,18 @@ const Dashboard: React.FC<Props> = ({ thl, delegations, lifeContext, yearCompass
   ].filter(item => item.value > 0); 
 
   // Trigger Alignment Analysis
+  // Added thl to dependency array as it affects work hours in timeData
   useEffect(() => {
     if (yearCompass && timeData.length > 0) {
+       // Avoid re-fetching if we already have a result and context hasn't changed drastically
+       // For simplicity, we just check if it's the first load or explicit change
        setLoadingAnalysis(true);
        getDashboardAlignmentAnalysis(timeData, yearCompass)
          .then(setAlignmentAnalysis)
-         .catch(() => setAlignmentAnalysis("Dados insuficientes."))
+         .catch(() => setAlignmentAnalysis("O foco determina a realidade."))
          .finally(() => setLoadingAnalysis(false));
     }
-  }, [lifeContext, yearCompass]);
+  }, [lifeContext, yearCompass, thl.realTHL]); 
 
   const price = parseFloat(convertPrice) || 0;
   const hoursCost = thl.realTHL > 0 ? price / thl.realTHL : 0;
@@ -227,9 +230,15 @@ const Dashboard: React.FC<Props> = ({ thl, delegations, lifeContext, yearCompass
                 <h4 className="text-xs font-bold text-indigo-400 uppercase tracking-widest mb-2 flex items-center gap-1">
                    <Target className="w-3 h-3" /> Crítica de Alocação
                 </h4>
-                <p className="text-sm text-slate-300 italic leading-relaxed font-serif">
-                   {loadingAnalysis ? "O Oráculo está analisando suas prioridades..." : `"${alignmentAnalysis}"`}
-                </p>
+                {loadingAnalysis ? (
+                   <div className="flex items-center gap-2 text-slate-500 text-sm animate-pulse">
+                      <Sparkles className="w-3 h-3" /> O Oráculo está analisando...
+                   </div>
+                ) : (
+                   <p className="text-sm text-slate-300 italic leading-relaxed font-serif">
+                      "{alignmentAnalysis || "Sem dados para análise."}"
+                   </p>
+                )}
              </div>
           </div>
 

@@ -4,13 +4,35 @@ import { BookOpen, Calculator, Brain, Sword, Compass, MessageSquare, Lock, Walle
 
 const Documentation: React.FC = () => {
   const [copied, setCopied] = useState(false);
+  const [copiedMigration, setCopiedMigration] = useState(false);
+
+  const migrationScript = `
+-- Migração v5.5: Adicionar Tabela de Notas Mensais
+create table if not exists public.monthly_notes (
+  id uuid default uuid_generate_v4() primary key,
+  user_id uuid references auth.users not null,
+  month numeric not null,
+  year numeric not null,
+  content text,
+  updated_at timestamp with time zone default timezone('utc'::text, now())
+);
+alter table public.monthly_notes enable row level security;
+
+-- Policies
+drop policy if exists "Users can all own notes" on monthly_notes;
+create policy "Users can all own notes" on monthly_notes for all using (auth.uid() = user_id);
+
+-- Opcional: Limpeza de cache de permissões
+grant all privileges on all tables in schema public to service_role;
+grant all privileges on all tables in schema public to authenticated;
+  `.trim();
 
   const sqlScript = `
 -- 1. Habilitar UUIDs
 create extension if not exists "uuid-ossp";
 
 -- 2. Tabela de Perfis (Financeiro e Config)
-create table public.profiles (
+create table if not exists public.profiles (
   id uuid references auth.users not null primary key,
   net_income numeric default 0,
   contract_hours_weekly numeric default 40,
@@ -19,12 +41,19 @@ create table public.profiles (
   updated_at timestamp with time zone default timezone('utc'::text, now())
 );
 alter table public.profiles enable row level security;
+
+-- Políticas Idempotentes (Remove antes de criar para evitar erro 42710)
+drop policy if exists "Users can view own profile" on profiles;
 create policy "Users can view own profile" on profiles for select using (auth.uid() = id);
+
+drop policy if exists "Users can update own profile" on profiles;
 create policy "Users can update own profile" on profiles for update using (auth.uid() = id);
+
+drop policy if exists "Users can insert own profile" on profiles;
 create policy "Users can insert own profile" on profiles for insert with check (auth.uid() = id);
 
 -- 3. Tabela de Delegações
-create table public.delegations (
+create table if not exists public.delegations (
   id uuid default uuid_generate_v4() primary key,
   user_id uuid references auth.users not null,
   name text not null,
@@ -36,10 +65,12 @@ create table public.delegations (
   created_at timestamp with time zone default timezone('utc'::text, now())
 );
 alter table public.delegations enable row level security;
+
+drop policy if exists "Users can all own delegations" on delegations;
 create policy "Users can all own delegations" on delegations for all using (auth.uid() = user_id);
 
 -- 4. Tabela de Ativos (Patrimônio)
-create table public.assets (
+create table if not exists public.assets (
   id uuid default uuid_generate_v4() primary key,
   user_id uuid references auth.users not null,
   name text not null,
@@ -53,10 +84,12 @@ create table public.assets (
   created_at timestamp with time zone default timezone('utc'::text, now())
 );
 alter table public.assets enable row level security;
+
+drop policy if exists "Users can all own assets" on assets;
 create policy "Users can all own assets" on assets for all using (auth.uid() = user_id);
 
 -- 5. Contexto de Vida e Diagnóstico
-create table public.life_contexts (
+create table if not exists public.life_contexts (
   user_id uuid references auth.users not null primary key,
   routine_description text,
   assets_description text,
@@ -71,10 +104,12 @@ create table public.life_contexts (
   last_updated timestamp with time zone default timezone('utc'::text, now())
 );
 alter table public.life_contexts enable row level security;
+
+drop policy if exists "Users can all own context" on life_contexts;
 create policy "Users can all own context" on life_contexts for all using (auth.uid() = user_id);
 
 -- 6. Bússola Anual (Metas)
-create table public.year_compass (
+create table if not exists public.year_compass (
   user_id uuid references auth.users not null primary key,
   goal1_text text,
   goal1_indicator text,
@@ -90,7 +125,23 @@ create table public.year_compass (
   updated_at timestamp with time zone default timezone('utc'::text, now())
 );
 alter table public.year_compass enable row level security;
+
+drop policy if exists "Users can all own compass" on year_compass;
 create policy "Users can all own compass" on year_compass for all using (auth.uid() = user_id);
+
+-- 7. Notas Mensais (Reflexões)
+create table if not exists public.monthly_notes (
+  id uuid default uuid_generate_v4() primary key,
+  user_id uuid references auth.users not null,
+  month numeric not null,
+  year numeric not null,
+  content text,
+  updated_at timestamp with time zone default timezone('utc'::text, now())
+);
+alter table public.monthly_notes enable row level security;
+
+drop policy if exists "Users can all own notes" on monthly_notes;
+create policy "Users can all own notes" on monthly_notes for all using (auth.uid() = user_id);
 
 -- Gatilho para criar perfil automaticamente ao cadastrar usuário
 create or replace function public.handle_new_user() 
@@ -102,6 +153,8 @@ begin
 end;
 $$ language plpgsql security definer;
 
+-- Drop trigger first to avoid errors
+drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
@@ -111,6 +164,12 @@ create trigger on_auth_user_created
     navigator.clipboard.writeText(sqlScript);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleCopyMigration = () => {
+    navigator.clipboard.writeText(migrationScript);
+    setCopiedMigration(true);
+    setTimeout(() => setCopiedMigration(false), 2000);
   };
 
   return (
@@ -125,46 +184,71 @@ create trigger on_auth_user_created
         </p>
       </div>
 
-      {/* Database Setup Section (NEW) */}
-      <section className="bg-slate-900 border border-indigo-500/30 rounded-xl p-6 shadow-2xl overflow-hidden">
-         <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold text-white flex items-center gap-2">
-               <Database className="w-5 h-5 text-indigo-400" />
-               Instalação do Banco de Dados (Supabase)
-            </h3>
-            <button 
-               onClick={handleCopy}
-               className="text-xs flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded transition-all"
-            >
-               {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-               {copied ? "Copiado!" : "Copiar SQL"}
-            </button>
-         </div>
-         
-         <div className="text-sm text-slate-400 mb-4 space-y-2">
-            <p>Para ativar a persistência na nuvem, siga estes passos:</p>
-            <ol className="list-decimal list-inside space-y-1 ml-2">
-               <li>Crie um projeto no <a href="https://supabase.com" target="_blank" className="text-indigo-400 underline">Supabase.com</a>.</li>
-               <li>Vá em <strong>SQL Editor</strong> no menu lateral.</li>
-               <li>Cole o código abaixo e clique em <strong>Run</strong>.</li>
-               <li>Adicione as variáveis <code>VITE_SUPABASE_URL</code> e <code>VITE_SUPABASE_ANON_KEY</code> no seu arquivo <code>.env</code> local ou nas configurações de deploy (Vercel/Netlify).</li>
-            </ol>
+      {/* Database Setup Section */}
+      <section className="space-y-6">
+         <div className="bg-slate-900 border border-indigo-500/30 rounded-xl p-6 shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                  <Database className="w-5 h-5 text-indigo-400" />
+                  Instalação Completa (Supabase)
+                </h3>
+                <button 
+                  onClick={handleCopy}
+                  className="text-xs flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded transition-all"
+                >
+                  {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  {copied ? "Copiado!" : "Copiar SQL Completo"}
+                </button>
+            </div>
+            
+            <div className="text-sm text-slate-400 mb-4 space-y-2">
+                <p>Para novos projetos. Rode este script no <strong>SQL Editor</strong> do Supabase.</p>
+            </div>
+
+            <div className="bg-black/50 p-4 rounded-lg border border-slate-800 overflow-x-auto">
+                <pre className="text-xs font-mono text-emerald-300 leading-relaxed">
+                  {sqlScript}
+                </pre>
+            </div>
          </div>
 
-         <div className="bg-black/50 p-4 rounded-lg border border-slate-800 overflow-x-auto">
-            <pre className="text-xs font-mono text-emerald-300 leading-relaxed">
-               {sqlScript}
-            </pre>
+         {/* Migration Section (Added based on user request) */}
+         <div className="bg-emerald-950/20 border border-emerald-500/20 rounded-xl p-6">
+            <div className="flex items-center justify-between mb-3">
+               <h3 className="text-lg font-bold text-emerald-400 flex items-center gap-2">
+                  <Sword className="w-5 h-5" />
+                  Migração v5.5 (Anotações Mensais)
+               </h3>
+               <button 
+                  onClick={handleCopyMigration}
+                  className="text-xs flex items-center gap-2 bg-emerald-700 hover:bg-emerald-600 text-white px-3 py-1.5 rounded transition-all"
+               >
+                  {copiedMigration ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  {copiedMigration ? "Copiado!" : "Copiar Migração"}
+               </button>
+            </div>
+            <p className="text-sm text-slate-300 mb-3">
+               Adicione a tabela de reflexões mensais.
+            </p>
+            <div className="bg-black/50 p-4 rounded-lg border border-slate-800 overflow-x-auto">
+               <pre className="text-xs font-mono text-emerald-300 leading-relaxed">
+                  {migrationScript}
+               </pre>
+            </div>
          </div>
       </section>
 
       {/* Release Notes */}
-      <section className="bg-emerald-950/20 border border-emerald-500/20 rounded-xl p-6">
-         <h3 className="text-lg font-bold text-emerald-400 flex items-center gap-2 mb-3">
+      <section className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+         <h3 className="text-lg font-bold text-slate-200 flex items-center gap-2 mb-3">
             <Wallet className="w-5 h-5" />
-            Novidades da Versão 5.4 (Wealth Intelligence)
+            Novidades da Versão 5.5
          </h3>
-         <ul className="space-y-2 text-sm text-slate-300">
+         <ul className="space-y-2 text-sm text-slate-400">
+            <li className="flex items-start gap-2">
+               <span className="text-emerald-500 font-bold">•</span>
+               <span><strong>Reflexões Mensais:</strong> Um diário tático integrado ao dashboard para você documentar seus progressos mês a mês.</span>
+            </li>
             <li className="flex items-start gap-2">
                <span className="text-emerald-500 font-bold">•</span>
                <span><strong>Patrimônio Inteligente 2.0:</strong> O Inventário agora ordena automaticamente seus ativos por valor, destacando o que realmente importa.</span>

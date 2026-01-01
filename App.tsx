@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './services/supabaseClient';
 import { dataService } from './services/dataService';
-import { FinancialProfile, CalculatedTHL, DelegationItem, AppView, LifeContext, ContextAnalysisResult, YearlyCompassData, AssetItem } from './types';
+import { FinancialProfile, CalculatedTHL, DelegationItem, AppView, LifeContext, ContextAnalysisResult, YearlyCompassData, AssetItem, MonthlyNote } from './types';
 import AuthScreen from './components/AuthScreen';
 import THLCalculator from './components/THLCalculator';
 import DelegationMatrix from './components/DelegationMatrix';
@@ -18,7 +18,8 @@ import Documentation from './components/Documentation';
 import BugTracker from './components/BugTracker';
 import SpecialistChat from './components/SpecialistChat';
 import YearlyGoals from './components/YearlyGoals';
-import { LayoutDashboard, Calculator, ListTodo, Target, Scale, Battery, ShoppingBag, Menu, X, BookUser, FileText, BookOpen, Bug, MessageSquare, Compass, LogOut, Wallet, ChevronDown, Sparkles } from 'lucide-react';
+import MonthlyReflections from './components/MonthlyReflections';
+import { LayoutDashboard, Calculator, ListTodo, Target, Scale, Battery, ShoppingBag, Menu, X, BookUser, FileText, BookOpen, Bug, MessageSquare, Compass, LogOut, Wallet, ChevronDown, Sparkles, Calendar } from 'lucide-react';
 
 const App: React.FC = () => {
   const [session, setSession] = useState<any>(null);
@@ -60,6 +61,7 @@ const App: React.FC = () => {
     goal3: { text: "", indicator: "", completed: false },
     financialGoal: { targetMonthlyIncome: 0, targetTHL: 0, deadlineMonth: "" }
   });
+  const [monthlyNotes, setMonthlyNotes] = useState<MonthlyNote[]>([]);
 
   // Auth Initialization
   useEffect(() => {
@@ -113,6 +115,7 @@ const App: React.FC = () => {
       setLifeContext(data.lifeContext);
       setAnalysisResult(data.analysisResult);
       setYearCompass(data.yearCompass);
+      setMonthlyNotes(data.monthlyNotes);
     } catch (error) {
       console.error("Error loading data:", error);
     } finally {
@@ -139,13 +142,12 @@ const App: React.FC = () => {
     }
   }, [yearCompass, session, loading]);
 
-  // NEW: Save Context when it changes (debounced)
+  // Save Context when it changes (debounced)
   useEffect(() => {
     if (session?.user?.id && !loading && lifeContext) {
         const timeout = setTimeout(() => {
-            // Save context without changing analysis result
             dataService.saveContext(session.user.id, lifeContext, analysisResult || undefined);
-        }, 2000); // 2 second debounce for text fields
+        }, 2000);
         return () => clearTimeout(timeout);
     }
   }, [lifeContext, analysisResult, session, loading]);
@@ -235,6 +237,18 @@ const App: React.FC = () => {
      });
   };
 
+  const handleSaveNote = async (note: MonthlyNote) => {
+    // Optimistic Update
+    setMonthlyNotes(prev => {
+      const filtered = prev.filter(n => !(n.month === note.month && n.year === note.year));
+      return [...filtered, note];
+    });
+
+    if (session?.user?.id) {
+      await dataService.saveNote(session.user.id, note);
+    }
+  };
+
   if (!session) {
     return <AuthScreen onDemoLogin={handleDemoLogin} />;
   }
@@ -260,6 +274,7 @@ const App: React.FC = () => {
         { id: AppView.DASHBOARD, label: 'Comando Central', icon: LayoutDashboard },
         { id: AppView.THL_CALCULATOR, label: 'Calculadora THL', icon: Calculator },
         { id: AppView.YEARLY_GOALS, label: 'Bússola Anual', icon: Compass },
+        { id: AppView.MONTHLY_REFLECTIONS, label: 'Anotações (Meses)', icon: Calendar },
         { id: AppView.LIFE_CONTEXT, label: 'Mapear Vida', icon: BookUser },
         { id: AppView.DIAGNOSIS, label: 'Diagnóstico', icon: FileText, hidden: !analysisResult },
         { id: AppView.CHAT, label: 'Chat Especialista', icon: MessageSquare },
@@ -439,6 +454,13 @@ const App: React.FC = () => {
                  data={yearCompass} 
                  thl={thlStats}
                  onUpdate={setYearCompass}
+               /></div>
+            )}
+
+            {view === AppView.MONTHLY_REFLECTIONS && (
+               <div className="p-6 md:p-12"><MonthlyReflections 
+                 notes={monthlyNotes} 
+                 onSave={handleSaveNote}
                /></div>
             )}
 

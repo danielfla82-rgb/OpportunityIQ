@@ -42,6 +42,14 @@ export interface AssetItem {
   };
 }
 
+export interface MonthlyNote {
+  id?: string;
+  month: number; // 1-12
+  year: number;
+  content: string;
+  updatedAt: string;
+}
+
 export interface ParetoResult {
   vitalFew: {
     task: string;
@@ -172,6 +180,7 @@ export enum AppView {
   ASSET_INVENTORY = 'ASSET_INVENTORY',
   DIAGNOSIS = 'DIAGNOSIS',
   YEARLY_GOALS = 'YEARLY_GOALS',
+  MONTHLY_REFLECTIONS = 'MONTHLY_REFLECTIONS',
   DELEGATION = 'DELEGATION',
   PARETO = 'PARETO',
   RAZORS = 'RAZORS',

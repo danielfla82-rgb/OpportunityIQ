@@ -636,6 +636,10 @@ export const getInactionAnalysis = async (decision: string, monthlyCost: number)
 };
 
 export const getDashboardAlignmentAnalysis = async (timeData: any[], goals: YearlyCompassData): Promise<string> => {
+  // Check if goals are actually set
+  const hasGoals = goals.goal1.text || goals.goal2.text || goals.goal3.text;
+  if (!hasGoals) return "Defina suas Grandes Pedras na Bússola Anual para receber orientação estratégica.";
+
   const ai = getClient();
   const timeSummary = timeData.map(t => `${t.name}: ${t.value.toFixed(1)}h`).join(', ');
   const goalsSummary = `1: ${goals.goal1.text}, 2: ${goals.goal2.text}, 3: ${goals.goal3.text}`;
@@ -657,6 +661,8 @@ export const getDashboardAlignmentAnalysis = async (timeData: any[], goals: Year
     });
     return response.text || "Sem dados suficientes para análise de alinhamento.";
   } catch (error) {
-    return "O Oráculo está recalculando suas prioridades...";
+    console.error("Dashboard Analysis Error:", error);
+    // Generic fallback to avoid "loading forever" appearance if API fails
+    return "O foco determina a realidade. Verifique se suas ações de hoje constroem o amanhã que você deseja.";
   }
 };
