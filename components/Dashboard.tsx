@@ -88,9 +88,7 @@ const Dashboard: React.FC<Props> = ({ thl, delegations, lifeContext, yearCompass
         </div>
 
         <div className="relative z-10 max-w-4xl space-y-6">
-           <div className="inline-block bg-emerald-500 text-black px-4 py-1 font-bold text-xs uppercase tracking-[0.3em]">
-              Sistema Operacional v6.0
-           </div>
+           {/* Badge Removed */}
            
            <div>
              <h1 className="text-8xl md:text-9xl font-serif text-white tracking-tighter leading-[0.85] mb-2 mix-blend-difference">

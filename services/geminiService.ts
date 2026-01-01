@@ -1,26 +1,34 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import type { Chat } from "@google/genai";
 import { FinancialProfile, CalculatedTHL, SunkCostScenario, ParetoResult, RazorAnalysis, EnergyAuditItem, SkillAnalysis, PreMortemResult, TimeTravelResult, InactionAnalysis, LifestyleAudit, ContextAnalysisResult, NietzscheArchetype, AssetItem } from "../types";
 
 // --- CLIENT HELPER ---
 const getApiKey = () => {
-  if (typeof process !== 'undefined' && process.env?.API_KEY) {
-    return process.env.API_KEY;
+  // 1. Try standard Vite environment variables (Preferred)
+  if (typeof import.meta !== 'undefined' && (import.meta as any).env) {
+    if ((import.meta as any).env.VITE_API_KEY) return (import.meta as any).env.VITE_API_KEY;
+    if ((import.meta as any).env.API_KEY) return (import.meta as any).env.API_KEY;
   }
-  if (typeof window !== 'undefined' && (window as any).process?.env?.API_KEY) {
-    return (window as any).process.env.API_KEY;
+  
+  // 2. Try Node/Process environment (for some build systems)
+  if (typeof process !== 'undefined' && process.env) {
+    if (process.env.VITE_API_KEY) return process.env.VITE_API_KEY;
+    if (process.env.API_KEY) return process.env.API_KEY;
   }
-  if (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_KEY) {
-    return (import.meta as any).env.VITE_API_KEY;
+  
+  // 3. Try Window Polyfill (Last resort)
+  if (typeof window !== 'undefined' && (window as any).process?.env) {
+    if ((window as any).process.env.VITE_API_KEY) return (window as any).process.env.VITE_API_KEY;
+    if ((window as any).process.env.API_KEY) return (window as any).process.env.API_KEY;
   }
+  
   return '';
 };
 
 const getClient = () => {
   const apiKey = getApiKey();
   if (!apiKey) {
-    console.warn("Gemini API Key missing. AI features will not work.");
+    console.warn("Gemini API Key missing. Please ensure VITE_API_KEY is set in your environment variables.");
   }
   return new GoogleGenAI({ apiKey });
 };
