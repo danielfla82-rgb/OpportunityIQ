@@ -1,7 +1,8 @@
+
 import React, { useState } from 'react';
 import { RazorAnalysis, PreMortemResult, TimeTravelResult } from '../types';
 import { getPhilosophicalAnalysis, getPreMortemAnalysis, getFutureSimulations } from '../services/geminiService';
-import { Sparkles, Scissors, EyeOff, Hourglass, Lightbulb, Scale, Skull, ArrowRightLeft, BookOpen, ShieldAlert } from 'lucide-react';
+import { Sparkles, Scissors, EyeOff, Hourglass, Lightbulb, Scale, Skull, ArrowRightLeft, BookOpen, ShieldAlert, RefreshCw } from 'lucide-react';
 
 type Tab = 'ORACLE' | 'PREMORTEM' | 'TIMETRAVEL';
 
@@ -46,6 +47,8 @@ const MentalRazors: React.FC = () => {
     setLoading(false);
   };
 
+  const isOracleOffline = oracleResult?.synthesis?.includes("IA em repouso");
+
   return (
     <div className="animate-fade-in h-full flex flex-col">
       <div className="mb-6">
@@ -81,7 +84,7 @@ const MentalRazors: React.FC = () => {
       </div>
 
       <div className="flex-1">
-        {/* TAB 1: ORACLE (Original) */}
+        {/* TAB 1: ORACLE */}
         {activeTab === 'ORACLE' && (
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 h-full">
             <div className="lg:col-span-2 space-y-6">
@@ -134,9 +137,18 @@ const MentalRazors: React.FC = () => {
                     </div>
                     <p className="text-slate-300 text-sm">{oracleResult.regret}</p>
                   </div>
-                  <div className="mt-6 bg-gradient-to-r from-purple-950/40 to-slate-900 border border-purple-500/30 p-6 rounded-xl text-center">
+                  <div className={`mt-6 border p-6 rounded-xl text-center relative group ${isOracleOffline ? 'bg-amber-950/20 border-amber-900/50' : 'bg-gradient-to-r from-purple-950/40 to-slate-900 border-purple-500/30'}`}>
                     <h3 className="text-sm uppercase tracking-widest text-purple-300 mb-2 font-bold">Veredito Sintético</h3>
                     <p className="text-xl font-serif text-white italic">"{oracleResult.synthesis}"</p>
+                    
+                    {isOracleOffline && (
+                        <button 
+                            onClick={handleOracle}
+                            className="mt-4 flex items-center gap-2 mx-auto text-xs text-amber-400 hover:text-white transition-colors bg-amber-950/50 px-3 py-1.5 rounded-full border border-amber-900"
+                        >
+                            <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} /> Tentar despertar a IA
+                        </button>
+                    )}
                   </div>
                 </>
               )}
