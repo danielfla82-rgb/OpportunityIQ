@@ -183,6 +183,53 @@ const Dashboard: React.FC<Props> = ({ thl, delegations, lifeContext, yearCompass
           </div>
        </div>
 
+       {/* GOALS SUMMARY - MOVED TO TOP */}
+       <div className="max-w-7xl mx-auto px-4 md:px-8 mt-6">
+          <div className="bg-slate-900 border border-slate-800 p-8">
+              <div className="flex justify-between items-center mb-6">
+                 <h3 className="text-sm font-bold text-white uppercase tracking-[0.2em] flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-emerald-500" /> Progresso das Grandes Pedras
+                 </h3>
+                 <button 
+                    onClick={() => onViewChange && onViewChange(AppView.YEARLY_GOALS)}
+                    className="text-xs text-slate-500 hover:text-emerald-400 uppercase tracking-widest transition-colors"
+                 >
+                    Ver Detalhes
+                 </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                 {[1, 2, 3].map((num) => {
+                    const key = `goal${num}` as keyof YearlyCompassData;
+                    // Safe access with fallback for potentially undefined yearCompass
+                    const goal = yearCompass ? (yearCompass as any)[key] : { text: "", completed: false, indicator: "" };
+                    const GoalIcon = goalIcons[num - 1];
+                    
+                    return (
+                       <div key={num} className={`p-4 rounded-lg border flex flex-col justify-between h-32 ${goal.completed ? 'bg-emerald-950/10 border-emerald-500/20' : 'bg-black/20 border-slate-800'}`}>
+                          <div>
+                             <div className="flex justify-between items-start mb-2">
+                                <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider flex items-center gap-1">
+                                   <GoalIcon className="w-3 h-3" /> Pedra #{num}
+                                </span>
+                                {goal.completed && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
+                             </div>
+                             <p className={`text-sm font-medium line-clamp-2 ${goal.completed ? 'text-slate-400 line-through' : 'text-white'}`}>
+                                {goal.text || "Meta não definida"}
+                             </p>
+                          </div>
+                          {goal.indicator && (
+                             <div className="text-[10px] text-indigo-400 flex items-center gap-1 mt-auto pt-2 border-t border-white/5">
+                                <Target className="w-3 h-3" /> {goal.indicator}
+                             </div>
+                          )}
+                       </div>
+                    );
+                 })}
+              </div>
+          </div>
+       </div>
+
        <div className="max-w-7xl mx-auto px-4 md:px-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
           
           {/* LEFT: 24H PIE CHART + ANALYSIS */}
@@ -337,53 +384,6 @@ const Dashboard: React.FC<Props> = ({ thl, delegations, lifeContext, yearCompass
                    </div>
                 </div>
              </div>
-          </div>
-       </div>
-
-       {/* BOTTOM: GOALS SUMMARY (REPLACED ROI CHART) */}
-       <div className="max-w-7xl mx-auto px-4 md:px-8 mt-6">
-          <div className="bg-slate-900 border border-slate-800 p-8">
-              <div className="flex justify-between items-center mb-6">
-                 <h3 className="text-sm font-bold text-white uppercase tracking-[0.2em] flex items-center gap-2">
-                    <Activity className="w-4 h-4 text-emerald-500" /> Progresso das Grandes Pedras
-                 </h3>
-                 <button 
-                    onClick={() => onViewChange && onViewChange(AppView.YEARLY_GOALS)}
-                    className="text-xs text-slate-500 hover:text-emerald-400 uppercase tracking-widest transition-colors"
-                 >
-                    Ver Detalhes
-                 </button>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                 {[1, 2, 3].map((num) => {
-                    const key = `goal${num}` as keyof YearlyCompassData;
-                    // Safe access with fallback for potentially undefined yearCompass
-                    const goal = yearCompass ? (yearCompass as any)[key] : { text: "", completed: false, indicator: "" };
-                    const GoalIcon = goalIcons[num - 1];
-                    
-                    return (
-                       <div key={num} className={`p-4 rounded-lg border flex flex-col justify-between h-32 ${goal.completed ? 'bg-emerald-950/10 border-emerald-500/20' : 'bg-black/20 border-slate-800'}`}>
-                          <div>
-                             <div className="flex justify-between items-start mb-2">
-                                <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider flex items-center gap-1">
-                                   <GoalIcon className="w-3 h-3" /> Pedra #{num}
-                                </span>
-                                {goal.completed && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
-                             </div>
-                             <p className={`text-sm font-medium line-clamp-2 ${goal.completed ? 'text-slate-400 line-through' : 'text-white'}`}>
-                                {goal.text || "Meta não definida"}
-                             </p>
-                          </div>
-                          {goal.indicator && (
-                             <div className="text-[10px] text-indigo-400 flex items-center gap-1 mt-auto pt-2 border-t border-white/5">
-                                <Target className="w-3 h-3" /> {goal.indicator}
-                             </div>
-                          )}
-                       </div>
-                    );
-                 })}
-              </div>
           </div>
        </div>
     </div>

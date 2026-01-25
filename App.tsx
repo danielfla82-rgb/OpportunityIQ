@@ -110,6 +110,23 @@ const App: React.FC = () => {
     try {
       const data = await dataService.loadFullData(userId);
       setProfile(data.profile);
+      
+      // CRITICAL FIX: Calculate THL immediately upon loading data so Dashboard isn't empty
+      const p = data.profile;
+      const weeksPerMonth = 4.33;
+      const workHoursMonthly = p.contractHoursWeekly * weeksPerMonth;
+      const commuteHoursMonthly = (p.commuteMinutesDaily / 60) * 5 * weeksPerMonth;
+      const totalInvestedHours = workHoursMonthly + commuteHoursMonthly;
+      const realTHL = totalInvestedHours > 0 ? p.netIncome / totalInvestedHours : 0;
+      const aspirationalTHL = totalInvestedHours > 0 ? p.aspirationalIncome / totalInvestedHours : 0;
+      
+      setThlStats({
+        realTHL,
+        aspirationalTHL,
+        monthlyTotalHours: totalInvestedHours,
+        monthlyCommuteHours: commuteHoursMonthly
+      });
+
       setDelegations(data.delegations);
       setAssets(data.assets);
       setLifeContext(data.lifeContext);
