@@ -75,8 +75,10 @@ const DiagnosisReport: React.FC<Props> = ({ result, thl, profile, onApply, onBac
   const TacticIcon = tactic.icon;
 
   // Conversions
-  const monthlyIncome = thl.realTHL * thl.monthlyTotalHours;
-  const weeklyIncome = monthlyIncome / 4.33;
+  // Fallback to profile income if THL not calculated yet to ensure chart works
+  const calculatedMonthlyIncome = thl.realTHL * thl.monthlyTotalHours;
+  const displayedMonthlyIncome = calculatedMonthlyIncome > 0 ? calculatedMonthlyIncome : (profile?.netIncome || 0);
+  const weeklyIncome = displayedMonthlyIncome / 4.33;
 
   // --- IBGE/FGV LOGIC (Updated to Monthly Income Standards) ---
   // Base 2024 Estimates for "Classe Social por Renda Domiciliar (adaptado para individual)"
@@ -118,7 +120,7 @@ const DiagnosisReport: React.FC<Props> = ({ result, thl, profile, onApply, onBac
     };
   };
 
-  const socialClass = getSocialClass(monthlyIncome);
+  const socialClass = getSocialClass(displayedMonthlyIncome);
   
   // Generate Bell Curve Data
   const generateBellCurveData = () => {
@@ -170,7 +172,13 @@ const DiagnosisReport: React.FC<Props> = ({ result, thl, profile, onApply, onBac
                </button>
             </div>
             
-            <div className="h-48 w-full relative mb-4">
+            <div className="h-48 w-full relative mb-4 bg-slate-950/50 rounded-lg border border-slate-800/50">
+               {/* Fixed Overlay Labels for better rendering reliability */}
+               <div className="absolute top-2 left-2 text-[10px] text-amber-500/70 font-bold uppercase tracking-wider z-10 pointer-events-none">O Camelo</div>
+               <div className="absolute top-2 right-2 text-[10px] text-emerald-500/70 font-bold uppercase tracking-wider z-10 text-right pointer-events-none">Übermensch</div>
+               <div className="absolute bottom-2 left-2 text-[10px] text-slate-600 font-bold uppercase tracking-wider z-10 pointer-events-none">Último Homem</div>
+               <div className="absolute bottom-2 right-2 text-[10px] text-slate-600 font-bold uppercase tracking-wider z-10 text-right pointer-events-none">Viajante</div>
+
                <ResponsiveContainer width="100%" height="100%">
                   <ScatterChart margin={{ top: 10, right: 10, bottom: 10, left: 0 }}>
                      <XAxis type="number" dataKey="x" name="Autonomia" domain={[0, 100]} tick={false} axisLine={{ stroke: '#475569' }} />
@@ -179,11 +187,6 @@ const DiagnosisReport: React.FC<Props> = ({ result, thl, profile, onApply, onBac
                      <ReferenceLine x={50} stroke="#334155" strokeDasharray="3 3" />
                      <ReferenceLine y={50} stroke="#334155" strokeDasharray="3 3" />
                      
-                     <text x="5%" y="95%" className="text-[10px] fill-slate-600 font-bold uppercase">Último Homem</text>
-                     <text x="5%" y="10%" className="text-[10px] fill-slate-600 font-bold uppercase">O Camelo</text>
-                     <text x="95%" y="95%" className="text-[10px] fill-slate-600 font-bold uppercase text-end" textAnchor="end">Viajante</text>
-                     <text x="95%" y="10%" className="text-[10px] fill-emerald-500/50 font-bold uppercase text-end" textAnchor="end">Übermensch</text>
-
                      <Scatter data={matrixData} fill="#8884d8">
                         {matrixData.map((entry, index) => (
                            <Cell key={`cell-${index}`} fill="#10b981" />
@@ -246,7 +249,7 @@ const DiagnosisReport: React.FC<Props> = ({ result, thl, profile, onApply, onBac
                
                <div className="h-40 w-full relative mb-2">
                   <ResponsiveContainer width="100%" height="100%">
-                     <ComposedChart data={bellCurveData} margin={{top: 20, right: 0, bottom: 0, left: 0}}>
+                     <ComposedChart data={bellCurveData} margin={{top: 30, right: 0, bottom: 0, left: 0}}>
                         <defs>
                           <linearGradient id="gradientCurve" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
@@ -284,7 +287,7 @@ const DiagnosisReport: React.FC<Props> = ({ result, thl, profile, onApply, onBac
                   </div>
                   <div className="text-right">
                      <div className="text-[10px] text-slate-500 uppercase tracking-widest">Renda Mensal Est.</div>
-                     <div className="font-mono text-xl text-white">R$ {monthlyIncome.toLocaleString('pt-BR')}</div>
+                     <div className="font-mono text-xl text-white">R$ {displayedMonthlyIncome.toLocaleString('pt-BR')}</div>
                   </div>
                </div>
             </div>
