@@ -180,9 +180,9 @@ const DiagnosisReport: React.FC<Props> = ({ result, thl, profile, onApply, onBac
                <div className="absolute bottom-2 right-2 text-[10px] text-slate-600 font-bold uppercase tracking-wider z-10 text-right pointer-events-none">Viajante</div>
 
                <ResponsiveContainer width="100%" height="100%">
-                  <ScatterChart margin={{ top: 10, right: 10, bottom: 10, left: 0 }}>
-                     <XAxis type="number" dataKey="x" name="Autonomia" domain={[0, 100]} tick={false} axisLine={{ stroke: '#475569' }} />
-                     <YAxis type="number" dataKey="y" name="Eficiência" domain={[0, 100]} tick={false} axisLine={{ stroke: '#475569' }} />
+                  <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+                     <XAxis type="number" dataKey="x" name="Autonomia" domain={[-10, 110]} tick={false} axisLine={{ stroke: '#475569' }} />
+                     <YAxis type="number" dataKey="y" name="Eficiência" domain={[-10, 110]} tick={false} axisLine={{ stroke: '#475569' }} />
                      <ZAxis type="number" dataKey="z" range={[100, 100]} />
                      <ReferenceLine x={50} stroke="#334155" strokeDasharray="3 3" />
                      <ReferenceLine y={50} stroke="#334155" strokeDasharray="3 3" />

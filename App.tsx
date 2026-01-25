@@ -15,11 +15,10 @@ import LifeContextBuilder from './components/LifeContextBuilder';
 import AssetInventory from './components/AssetInventory';
 import DiagnosisReport from './components/DiagnosisReport';
 import Documentation from './components/Documentation';
-import BugTracker from './components/BugTracker';
 import SpecialistChat from './components/SpecialistChat';
 import YearlyGoals from './components/YearlyGoals';
 import MonthlyReflections from './components/MonthlyReflections';
-import { LayoutDashboard, Calculator, ListTodo, Target, Scale, Battery, ShoppingBag, Menu, X, BookUser, FileText, BookOpen, Bug, MessageSquare, Compass, LogOut, Wallet, ChevronDown, Sparkles, Calendar } from 'lucide-react';
+import { LayoutDashboard, Calculator, ListTodo, Target, Scale, Battery, ShoppingBag, Menu, X, BookUser, FileText, BookOpen, MessageSquare, Compass, LogOut, Wallet, ChevronDown, Sparkles, Calendar } from 'lucide-react';
 
 const App: React.FC = () => {
   const [session, setSession] = useState<any>(null);
@@ -312,7 +311,6 @@ const App: React.FC = () => {
       title: 'Suporte',
       items: [
         { id: AppView.DOCS, label: 'Wiki do Operador', icon: BookOpen },
-        { id: AppView.BUG_TRACKER, label: 'Reportar Bug', icon: Bug },
       ]
     }
   ];
@@ -509,16 +507,13 @@ const App: React.FC = () => {
               <div className="p-6 md:p-12"><Documentation /></div>
             )}
 
-            {view === AppView.BUG_TRACKER && (
-              <div className="p-6 md:p-12"><BugTracker profile={profile} thl={thlStats} /></div>
-            )}
-
             {view === AppView.DASHBOARD && (
               <Dashboard 
                 thl={thlStats} 
                 delegations={delegations} 
                 lifeContext={lifeContext} 
                 yearCompass={yearCompass}
+                analysisResult={analysisResult}
                 onViewChange={setView} 
               />
             )}

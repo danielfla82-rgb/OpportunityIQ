@@ -1,5 +1,4 @@
 
-
 export interface FinancialProfile {
   netIncome: number;
   contractHoursWeekly: number;
@@ -187,7 +186,6 @@ export enum AppView {
   ENERGY_AUDIT = 'ENERGY_AUDIT',
   LIFESTYLE_INFLATOR = 'LIFESTYLE_INFLATOR',
   DOCS = 'DOCS',
-  BUG_TRACKER = 'BUG_TRACKER',
   CHAT = 'CHAT',
   SETTINGS = 'SETTINGS'
 }
