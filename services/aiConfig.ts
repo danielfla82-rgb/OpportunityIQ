@@ -6,18 +6,28 @@
 
 /**
  * Recupera a API Key.
- * Conforme diretrizes, deve usar exclusivamente process.env.API_KEY.
+ * Tenta process.env (padrão) e fallbacks para Vite (import.meta.env).
  */
 export const getGeminiApiKey = (): string => {
-  // Garante o uso da variável de ambiente injetada pelo sistema
-  const key = process.env.API_KEY;
-  return key ? key.trim() : '';
+  // 1. Tenta variável de ambiente padrão (Node/System)
+  if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
+    return process.env.API_KEY.trim();
+  }
+
+  // 2. Tenta variável injetada pelo Vite (Padrão VITE_)
+  // @ts-ignore
+  if (typeof import.meta !== 'undefined' && import.meta.env) {
+    // @ts-ignore
+    if (import.meta.env.VITE_API_KEY) return import.meta.env.VITE_API_KEY.trim();
+    // @ts-ignore
+    if (import.meta.env.API_KEY) return import.meta.env.API_KEY.trim();
+  }
+
+  return '';
 };
 
 /**
  * Estratégia Smart Runner (Cascata de Modelos)
- * Prioridade: Gemini 3 Flash -> Gemini 3 Pro
- * Se o primeiro falhar (404/500), o sistema tenta o próximo automaticamente.
  */
 export const MODEL_CASCADE = [
   'gemini-3-flash-preview',  // Primário: Rápido e inteligente

@@ -110,7 +110,7 @@ const App: React.FC = () => {
       const data = await dataService.loadFullData(userId);
       setProfile(data.profile);
       
-      // CRITICAL FIX: Calculate THL immediately upon loading data so Dashboard isn't empty
+      // Calculate THL immediately upon loading data
       const p = data.profile;
       const weeksPerMonth = 4.33;
       const workHoursMonthly = p.contractHoursWeekly * weeksPerMonth;
