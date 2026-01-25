@@ -2,7 +2,9 @@
 import React, { useState } from 'react';
 import { AssetItem } from '../types';
 import { analyzeAsset } from '../services/geminiService';
-import { Trash2, Building2, Car, Laptop, TrendingUp, TrendingDown, Wallet, Brain, Loader2, ArrowLeft, Star, History, AlertCircle } from 'lucide-react';
+import { Trash2, Building2, Car, Laptop, TrendingUp, TrendingDown, Wallet, Brain, Loader2, ArrowLeft, Star, History, AlertCircle, Edit2, X, Save, Plus } from 'lucide-react';
+import { dataService } from '../services/dataService';
+import { supabase } from '../services/supabaseClient';
 
 interface Props {
   assets: AssetItem[];
@@ -22,6 +24,7 @@ const generateUUID = () => {
 
 const AssetInventory: React.FC<Props> = ({ assets, setAssets, onBack }) => {
   const [loading, setLoading] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [newItem, setNewItem] = useState<Partial<AssetItem>>({
     name: '',
     description: '',
@@ -54,6 +57,60 @@ const AssetInventory: React.FC<Props> = ({ assets, setAssets, onBack }) => {
     setAssets(prev => [...prev, asset]);
     setNewItem({ name: '', description: '', purchaseValue: 0, purchaseYear: new Date().getFullYear(), category: 'OTHER' });
     setLoading(false);
+  };
+
+  const startEditing = (asset: AssetItem) => {
+    setEditingId(asset.id);
+    setNewItem({
+      name: asset.name,
+      description: asset.description,
+      purchaseValue: asset.purchaseValue,
+      purchaseYear: asset.purchaseYear,
+      category: asset.category
+    });
+    // Scroll to top to see the form
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const cancelEditing = () => {
+    setEditingId(null);
+    setNewItem({ name: '', description: '', purchaseValue: 0, purchaseYear: new Date().getFullYear(), category: 'OTHER' });
+  };
+
+  const handleUpdate = async () => {
+    if (!editingId || !newItem.name) return;
+    
+    // Check if we have user ID for persistence
+    const { data: { session } } = await supabase.auth.getSession();
+    const userId = session?.user?.id;
+
+    // Find original asset to keep AI Analysis if we don't want to re-run it automatically
+    // For simplicity, we keep the old AI analysis unless we specifically add a "Re-analyze" button later.
+    // However, if value changed drastically, AI analysis might be stale.
+    // Given the prompt "Permitir editar", simple field update is usually expected first.
+    
+    const originalAsset = assets.find(a => a.id === editingId);
+    if (!originalAsset) return;
+
+    const updatedAsset: AssetItem = {
+        ...originalAsset,
+        name: newItem.name,
+        description: newItem.description || '',
+        purchaseValue: Number(newItem.purchaseValue),
+        purchaseYear: Number(newItem.purchaseYear),
+        category: newItem.category as any,
+        // Keep existing AI analysis. To re-analyze, user can delete/add or we add a specific feature later.
+    };
+
+    // Update Local State
+    setAssets(prev => prev.map(a => a.id === editingId ? updatedAsset : a));
+
+    // Update Persistence
+    if (userId) {
+        await dataService.updateAsset(userId, updatedAsset);
+    }
+
+    cancelEditing();
   };
 
   const remove = (id: string) => {
@@ -121,13 +178,23 @@ const AssetInventory: React.FC<Props> = ({ assets, setAssets, onBack }) => {
       </div>
 
       {/* Input Form */}
-      <div className="bg-slate-900/50 p-6 rounded-xl border border-slate-800">
-         <h3 className="text-sm font-bold text-slate-300 uppercase tracking-widest mb-4">Adicionar Bem</h3>
+      <div className={`p-6 rounded-xl border transition-all duration-300 ${editingId ? 'bg-indigo-950/20 border-indigo-500/30' : 'bg-slate-900/50 border-slate-800'}`}>
+         <div className="flex justify-between items-center mb-4">
+            <h3 className={`text-sm font-bold uppercase tracking-widest ${editingId ? 'text-indigo-400' : 'text-slate-300'}`}>
+                {editingId ? 'Editando Bem' : 'Adicionar Bem'}
+            </h3>
+            {editingId && (
+                <button onClick={cancelEditing} className="text-xs text-slate-400 hover:text-white flex items-center gap-1 bg-slate-800 px-2 py-1 rounded">
+                    <X className="w-3 h-3" /> Cancelar
+                </button>
+            )}
+         </div>
+
          <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
             <div className="md:col-span-3">
                <label className="text-[10px] text-slate-500 uppercase block mb-1">Nome</label>
                <input 
-                 className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-200 text-sm"
+                 className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-200 text-sm focus:border-emerald-500 outline-none"
                  placeholder="Ex: Honda Civic, MacBook M1"
                  value={newItem.name}
                  onChange={e => setNewItem({...newItem, name: e.target.value})}
@@ -135,19 +202,22 @@ const AssetInventory: React.FC<Props> = ({ assets, setAssets, onBack }) => {
             </div>
             <div className="md:col-span-2">
                <label className="text-[10px] text-slate-500 uppercase block mb-1">Valor Compra</label>
-               <input 
-                 type="number"
-                 className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-200 text-sm"
-                 placeholder="0.00"
-                 value={newItem.purchaseValue || ''}
-                 onChange={e => setNewItem({...newItem, purchaseValue: parseFloat(e.target.value)})}
-               />
+               <div className="relative group">
+                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500 text-sm font-sans z-10 select-none group-focus-within:text-emerald-500">R$</span>
+                  <input 
+                    type="number"
+                    className="w-full bg-slate-950 border border-slate-700 rounded p-2 pl-9 text-slate-200 text-sm focus:border-emerald-500 outline-none font-mono"
+                    placeholder="0.00"
+                    value={newItem.purchaseValue || ''}
+                    onChange={e => setNewItem({...newItem, purchaseValue: parseFloat(e.target.value)})}
+                  />
+               </div>
             </div>
             <div className="md:col-span-2">
                <label className="text-[10px] text-slate-500 uppercase block mb-1">Ano Compra</label>
                <input 
                  type="number"
-                 className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-200 text-sm"
+                 className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-200 text-sm focus:border-emerald-500 outline-none"
                  value={newItem.purchaseYear}
                  onChange={e => setNewItem({...newItem, purchaseYear: parseFloat(e.target.value)})}
                />
@@ -155,7 +225,7 @@ const AssetInventory: React.FC<Props> = ({ assets, setAssets, onBack }) => {
             <div className="md:col-span-2">
                <label className="text-[10px] text-slate-500 uppercase block mb-1">Categoria</label>
                <select 
-                  className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-200 text-sm"
+                  className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-200 text-sm focus:border-emerald-500 outline-none"
                   value={newItem.category}
                   onChange={e => setNewItem({...newItem, category: e.target.value as any})}
                >
@@ -167,18 +237,28 @@ const AssetInventory: React.FC<Props> = ({ assets, setAssets, onBack }) => {
                </select>
             </div>
             <div className="md:col-span-3">
-               <button 
-                 onClick={handleAdd}
-                 disabled={loading || !newItem.name}
-                 className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold py-2 rounded transition-all flex items-center justify-center gap-2 text-sm h-[38px]"
-               >
-                 {loading ? <Loader2 className="animate-spin w-4 h-4" /> : <Brain className="w-4 h-4" />}
-                 {loading ? "Avaliando..." : "Cadastrar & Analisar"}
-               </button>
+               {editingId ? (
+                 <button 
+                   onClick={handleUpdate}
+                   disabled={!newItem.name}
+                   className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold py-2 rounded transition-all flex items-center justify-center gap-2 text-sm h-[38px]"
+                 >
+                   <Save className="w-4 h-4" /> Salvar Alterações
+                 </button>
+               ) : (
+                 <button 
+                   onClick={handleAdd}
+                   disabled={loading || !newItem.name}
+                   className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold py-2 rounded transition-all flex items-center justify-center gap-2 text-sm h-[38px]"
+                 >
+                   {loading ? <Loader2 className="animate-spin w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                   {loading ? "Avaliando..." : "Cadastrar & Analisar"}
+                 </button>
+               )}
             </div>
             <div className="md:col-span-12">
                <input 
-                 className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-400 text-xs italic"
+                 className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-400 text-xs italic focus:border-emerald-500 outline-none"
                  placeholder="Descrição opcional (estado de conservação, localização, etc) para refinar a análise da IA..."
                  value={newItem.description}
                  onChange={e => setNewItem({...newItem, description: e.target.value})}
@@ -193,9 +273,10 @@ const AssetInventory: React.FC<Props> = ({ assets, setAssets, onBack }) => {
             // Determine if asset is a "Keeper" (Appreciating or Stable)
             const isKeeper = asset.aiAnalysis?.depreciationTrend === 'APPRECIATING' || asset.aiAnalysis?.depreciationTrend === 'STABLE';
             const hasAnalysisError = asset.aiAnalysis?.commentary?.includes("Não foi possível") || asset.aiAnalysis?.commentary?.includes("Estimativa automática");
+            const isEditingThis = editingId === asset.id;
 
             return (
-              <div key={asset.id} className="bg-slate-900 border border-slate-800 p-5 rounded-xl hover:border-emerald-500/30 transition-all group relative overflow-hidden">
+              <div key={asset.id} className={`bg-slate-900 border p-5 rounded-xl transition-all group relative overflow-hidden ${isEditingThis ? 'border-indigo-500/50 ring-1 ring-indigo-500/20' : 'border-slate-800 hover:border-emerald-500/30'}`}>
                  {/* Keeper Highlight Background */}
                  {isKeeper && (
                     <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-amber-500/10 to-transparent pointer-events-none"></div>
@@ -259,13 +340,22 @@ const AssetInventory: React.FC<Props> = ({ assets, setAssets, onBack }) => {
                           </div>
                        </div>
                        
-                       <button 
-                          onClick={() => remove(asset.id)}
-                          className="text-slate-600 hover:text-red-400 p-2 transition-colors hover:bg-red-950/20 rounded"
-                          title="Remover Item"
-                       >
-                          <Trash2 className="w-4 h-4" />
-                       </button>
+                       <div className="flex items-center gap-2">
+                          <button 
+                             onClick={() => startEditing(asset)}
+                             className="text-slate-500 hover:text-indigo-400 p-2 transition-colors hover:bg-indigo-950/20 rounded border border-transparent hover:border-indigo-500/30"
+                             title="Editar Bem"
+                          >
+                             <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button 
+                             onClick={() => remove(asset.id)}
+                             className="text-slate-500 hover:text-red-400 p-2 transition-colors hover:bg-red-950/20 rounded border border-transparent hover:border-red-500/30"
+                             title="Remover Item"
+                          >
+                             <Trash2 className="w-4 h-4" />
+                          </button>
+                       </div>
                     </div>
                  </div>
               </div>

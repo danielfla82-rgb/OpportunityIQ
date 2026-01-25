@@ -374,24 +374,12 @@ export const dataService = {
       if (!isDemo(userId)) {
         const current = getLocalData();
         const notes = current.monthlyNotes || [];
-        // Remove existing note for that month/year if exists
         const filtered = notes.filter((n: MonthlyNote) => !(n.month === note.month && n.year === note.year));
         saveLocalData({ monthlyNotes: [...filtered, note] });
       }
       return { error: null };
     }
 
-    // Using Upsert based on composite key logic via SQL policies or ensuring uniqueness in application logic
-    // Supabase needs a unique constraint or primary key to upsert. 
-    // Assuming we don't have a unique constraint on (user_id, month, year) yet in SQL, we can try to insert/update based on ID or select first.
-    // Better strategy: We can assume the frontend passes an ID if it exists, or we query first.
-    // However, simplest "upsert" for this logic without unique constraint is DELETE then INSERT, or use a Match query.
-    
-    // Efficient strategy: Use `upsert` matching on a unique constraint if we added one, 
-    // BUT since I can't guarantee the user ran a complex migration with constraints, 
-    // I will use a SELECT -> UPDATE/INSERT pattern to be safe, or just insert.
-    
-    // Let's rely on the client knowing the ID if it was loaded, OR check existence.
     const { data: existing } = await supabase
         .from('monthly_notes')
         .select('id')
@@ -482,11 +470,41 @@ export const dataService = {
       purchase_year: item.purchaseYear,
       purchase_value: item.purchaseValue,
       category: item.category,
-      // Flattening AI analysis for SQL storage
       current_value_est: item.aiAnalysis?.currentValueEstimated,
       appreciation_rate: item.aiAnalysis?.depreciationTrend,
       liabilities_text: item.aiAnalysis?.commentary
     });
+    return error;
+  },
+
+  /**
+   * Update an Asset Item
+   */
+  updateAsset: async (userId: string, item: AssetItem) => {
+    if (!isSupabaseConfigured || isDemo(userId)) {
+        if (!isDemo(userId)) {
+            const current = getLocalData();
+            const list = current.assets || [];
+            // Replace existing item
+            const newList = list.map((i: AssetItem) => i.id === item.id ? item : i);
+            saveLocalData({ assets: newList });
+        }
+        return { error: null };
+    }
+    
+    // We update all editable fields
+    const { error } = await supabase.from('assets').update({
+      name: item.name,
+      description: item.description,
+      purchase_year: item.purchaseYear,
+      purchase_value: item.purchaseValue,
+      category: item.category,
+      // We assume AI analysis is also updated in the object passed here
+      current_value_est: item.aiAnalysis?.currentValueEstimated,
+      appreciation_rate: item.aiAnalysis?.depreciationTrend,
+      liabilities_text: item.aiAnalysis?.commentary
+    }).eq('id', item.id).eq('user_id', userId);
+    
     return error;
   },
   

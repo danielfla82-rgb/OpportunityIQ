@@ -1,5 +1,5 @@
 
-import React, { Component, type ErrorInfo, type ReactNode } from 'react';
+import React, { ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw, Terminal } from 'lucide-react';
 
 interface Props {
@@ -12,25 +12,26 @@ interface State {
   errorInfo: ErrorInfo | null;
 }
 
-// Fix: Import Component explicitly and remove override keywords to resolve inheritance recognition issues in this environment.
-class ErrorBoundary extends Component<Props, State> {
-  // Use property initializer for state
-  public state: State = {
-    hasError: false,
-    error: null,
-    errorInfo: null
-  };
+class ErrorBoundary extends React.Component<Props, State> {
+  constructor(props: Props) {
+    super(props);
+    this.state = {
+      hasError: false,
+      error: null,
+      errorInfo: null
+    };
+  }
 
-  public static getDerivedStateFromError(error: Error): Partial<State> {
+  static getDerivedStateFromError(error: Error): Partial<State> {
     return { hasError: true, error };
   }
 
-  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("Uncaught error:", error, errorInfo);
     this.setState({ error, errorInfo });
   }
 
-  public render() {
+  render() {
     if (this.state.hasError) {
       return (
         <div className="min-h-screen bg-[#020617] text-slate-200 flex items-center justify-center p-6 font-sans">
