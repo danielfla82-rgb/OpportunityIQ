@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { AssetItem } from '../types';
 import { analyzeAsset } from '../services/geminiService';
-import { Trash2, Building2, Car, Laptop, TrendingUp, TrendingDown, Wallet, Brain, Loader2, ArrowLeft, Star, History, AlertCircle, Edit2, X, Save, Plus } from 'lucide-react';
+import { Trash2, Building2, Car, Laptop, TrendingUp, TrendingDown, Wallet, Brain, Loader2, ArrowLeft, Star, History, AlertCircle, Edit2, X, Save, Plus, RefreshCcw } from 'lucide-react';
 import { dataService } from '../services/dataService';
 import { supabase } from '../services/supabaseClient';
 
@@ -24,6 +24,7 @@ const generateUUID = () => {
 
 const AssetInventory: React.FC<Props> = ({ assets, setAssets, onBack }) => {
   const [loading, setLoading] = useState(false);
+  const [analyzingIds, setAnalyzingIds] = useState<Set<string>>(new Set());
   const [editingId, setEditingId] = useState<string | null>(null);
   const [newItem, setNewItem] = useState<Partial<AssetItem>>({
     name: '',
@@ -59,6 +60,43 @@ const AssetInventory: React.FC<Props> = ({ assets, setAssets, onBack }) => {
     setLoading(false);
   };
 
+  const handleReanalyze = async (asset: AssetItem) => {
+    // Add to loading set
+    setAnalyzingIds(prev => new Set(prev).add(asset.id));
+
+    try {
+        const newAnalysis = await analyzeAsset(
+            asset.name,
+            asset.description,
+            asset.purchaseValue,
+            asset.purchaseYear
+        );
+
+        const updatedAsset: AssetItem = {
+            ...asset,
+            aiAnalysis: newAnalysis
+        };
+
+        // Update local state
+        setAssets(prev => prev.map(a => a.id === asset.id ? updatedAsset : a));
+
+        // Persist to DB
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user?.id) {
+            await dataService.updateAsset(session.user.id, updatedAsset);
+        }
+    } catch (error) {
+        console.error("Reanalysis failed", error);
+    } finally {
+        // Remove from loading set
+        setAnalyzingIds(prev => {
+            const next = new Set(prev);
+            next.delete(asset.id);
+            return next;
+        });
+    }
+  };
+
   const startEditing = (asset: AssetItem) => {
     setEditingId(asset.id);
     setNewItem({
@@ -84,11 +122,6 @@ const AssetInventory: React.FC<Props> = ({ assets, setAssets, onBack }) => {
     const { data: { session } } = await supabase.auth.getSession();
     const userId = session?.user?.id;
 
-    // Find original asset to keep AI Analysis if we don't want to re-run it automatically
-    // For simplicity, we keep the old AI analysis unless we specifically add a "Re-analyze" button later.
-    // However, if value changed drastically, AI analysis might be stale.
-    // Given the prompt "Permitir editar", simple field update is usually expected first.
-    
     const originalAsset = assets.find(a => a.id === editingId);
     if (!originalAsset) return;
 
@@ -99,7 +132,7 @@ const AssetInventory: React.FC<Props> = ({ assets, setAssets, onBack }) => {
         purchaseValue: Number(newItem.purchaseValue),
         purchaseYear: Number(newItem.purchaseYear),
         category: newItem.category as any,
-        // Keep existing AI analysis. To re-analyze, user can delete/add or we add a specific feature later.
+        // Keep existing AI analysis. User can re-analyze manually if needed.
     };
 
     // Update Local State
@@ -272,8 +305,9 @@ const AssetInventory: React.FC<Props> = ({ assets, setAssets, onBack }) => {
          {sortedAssets.map((asset) => {
             // Determine if asset is a "Keeper" (Appreciating or Stable)
             const isKeeper = asset.aiAnalysis?.depreciationTrend === 'APPRECIATING' || asset.aiAnalysis?.depreciationTrend === 'STABLE';
-            const hasAnalysisError = asset.aiAnalysis?.commentary?.includes("Não foi possível") || asset.aiAnalysis?.commentary?.includes("Estimativa automática");
+            const hasAnalysisError = asset.aiAnalysis?.commentary?.includes("Não foi possível") || asset.aiAnalysis?.commentary?.includes("Estimativa automática") || asset.aiAnalysis?.commentary?.includes("Offline");
             const isEditingThis = editingId === asset.id;
+            const isAnalyzingThis = analyzingIds.has(asset.id);
 
             return (
               <div key={asset.id} className={`bg-slate-900 border p-5 rounded-xl transition-all group relative overflow-hidden ${isEditingThis ? 'border-indigo-500/50 ring-1 ring-indigo-500/20' : 'border-slate-800 hover:border-emerald-500/30'}`}>
@@ -299,12 +333,30 @@ const AssetInventory: React.FC<Props> = ({ assets, setAssets, onBack }) => {
                        
                        {asset.aiAnalysis && (
                           <div className={`bg-slate-950/50 border p-3 rounded-lg mt-3 text-sm ml-0 md:ml-10 ${hasAnalysisError ? 'border-amber-900/30' : 'border-slate-800'}`}>
-                             <div className="flex items-center gap-2 mb-1 text-indigo-400 text-[10px] font-bold uppercase tracking-wider">
-                                <Brain className="w-3 h-3" /> Análise do Oráculo
+                             <div className="flex items-center justify-between mb-1">
+                                <div className="flex items-center gap-2 text-indigo-400 text-[10px] font-bold uppercase tracking-wider">
+                                    <Brain className="w-3 h-3" /> Análise do Oráculo
+                                </div>
+                                <button 
+                                    onClick={() => handleReanalyze(asset)}
+                                    disabled={isAnalyzingThis}
+                                    className="text-slate-500 hover:text-white transition-colors p-1 rounded hover:bg-slate-800"
+                                    title="Recarregar Análise IA"
+                                >
+                                    {isAnalyzingThis ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCcw className="w-3 h-3" />}
+                                </button>
                              </div>
-                             <p className={`text-xs leading-relaxed italic ${hasAnalysisError ? 'text-amber-500/70' : 'text-slate-300'}`}>
-                                "{asset.aiAnalysis.commentary}"
-                             </p>
+                             
+                             {isAnalyzingThis ? (
+                                <p className="text-xs leading-relaxed italic text-slate-500 animate-pulse">
+                                    Reavaliando ativo com dados de mercado...
+                                </p>
+                             ) : (
+                                <p className={`text-xs leading-relaxed italic ${hasAnalysisError ? 'text-amber-500/70' : 'text-slate-300'}`}>
+                                    "{asset.aiAnalysis.commentary}"
+                                </p>
+                             )}
+
                              {asset.aiAnalysis.maintenanceCostMonthlyEstimate > 0 && (
                                 <div className="mt-2 text-red-400 text-xs flex items-center gap-1 font-medium bg-red-950/20 px-2 py-1 rounded w-fit border border-red-900/30">
                                    <AlertCircle className="w-3 h-3" /> Custo Oculto Est.: R$ {asset.aiAnalysis.maintenanceCostMonthlyEstimate}/mês
@@ -318,7 +370,10 @@ const AssetInventory: React.FC<Props> = ({ assets, setAssets, onBack }) => {
                        <div>
                           <div className="text-xs text-slate-500 uppercase tracking-wide mb-1">Valor Atual Est.</div>
                           <div className="text-2xl font-mono text-white font-bold">
-                             R$ {asset.aiAnalysis?.currentValueEstimated?.toLocaleString() || asset.purchaseValue.toLocaleString()}
+                             {isAnalyzingThis 
+                                ? <Loader2 className="w-6 h-6 animate-spin ml-auto text-slate-600" />
+                                : `R$ ${asset.aiAnalysis?.currentValueEstimated?.toLocaleString() || asset.purchaseValue.toLocaleString()}`
+                             }
                           </div>
                           
                           <div className="mt-3 text-xs text-slate-500 flex flex-col items-end gap-0.5">
