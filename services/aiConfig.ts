@@ -38,14 +38,13 @@ export const getGeminiApiKey = (): string => {
 
 /**
  * Estratégia Smart Runner (Cascata de Modelos)
- * Prioridade: Inteligência/Velocidade do 2.0 -> Estabilidade do 1.5
+ * Prioridade: Gemini 3 Flash -> Gemini 3 Pro
  * Se o primeiro falhar (404/500), o sistema tenta o próximo automaticamente.
  */
 export const MODEL_CASCADE = [
-  'gemini-2.0-flash',        // Primário: Mais rápido e capaz
-  'gemini-1.5-flash',        // Estabilidade: Modelo de produção robusto (Fallback principal)
-  'gemini-2.0-flash-exp',    // Experimental: Versão preview
-  'gemini-1.5-flash-latest'  // Legacy: Último recurso
+  'gemini-3-flash-preview',  // Primário: Rápido e inteligente
+  'gemini-3-pro-preview',    // Fallback: Mais robusto
+  'gemini-flash-latest'      // Legacy: Último recurso
 ];
 
 export const SYSTEM_INSTRUCTIONS = {

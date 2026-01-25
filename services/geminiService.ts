@@ -206,9 +206,8 @@ export const analyzeLifeContext = async (routine: string, assets: AssetItem[], t
 // Chat especializado usa streaming e precisa instanciar direto, mas usa o helper de Key
 export const createSpecialistChat = (thl: number, context: string): Chat => {
   const ai = createClient();
-  // Tenta o modelo primário para chat (Smart Runner é difícil em stream, usamos o cascade[0] ou [1])
-  // Para estabilidade, usamos o segundo da lista se o primeiro for experimental
-  const modelToUse = MODEL_CASCADE.includes('gemini-1.5-flash') ? 'gemini-1.5-flash' : MODEL_CASCADE[0];
+  // Tenta o modelo primário para chat
+  const modelToUse = MODEL_CASCADE[0];
   
   return ai.chats.create({
     model: modelToUse, 

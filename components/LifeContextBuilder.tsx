@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { LifeContext, ContextAnalysisResult, CalculatedTHL, AssetItem, AppView, FinancialProfile } from '../types';
 import { analyzeLifeContext } from '../services/geminiService';
@@ -21,19 +20,20 @@ const LifeContextBuilder: React.FC<Props> = ({ thl, profile, initialContext, ass
   const [studyMinutes, setStudyMinutes] = useState(initialContext?.studyMinutes || 0);
   const [loading, setLoading] = useState(false);
 
-  // Sync state when props change (initial load)
+  // Sync state when props change (initial load), ensuring no loop
   useEffect(() => {
     if (initialContext) {
-        setRoutine(initialContext.routineDescription || "");
-        setSleepHours(initialContext.sleepHours || 7);
-        setPhysicalMinutes(initialContext.physicalActivityMinutes || 0);
-        setStudyMinutes(initialContext.studyMinutes || 0);
+        setRoutine(prev => initialContext.routineDescription !== prev ? initialContext.routineDescription || "" : prev);
+        setSleepHours(prev => initialContext.sleepHours !== prev ? initialContext.sleepHours || 7 : prev);
+        setPhysicalMinutes(prev => initialContext.physicalActivityMinutes !== prev ? initialContext.physicalActivityMinutes || 0 : prev);
+        setStudyMinutes(prev => initialContext.studyMinutes !== prev ? initialContext.studyMinutes || 0 : prev);
     }
   }, [initialContext]);
 
   // Real-time propagation of changes to parent (auto-save behavior logic resides in parent)
   useEffect(() => {
     if (onUpdate) {
+        // Debounce logic could be added here, but parent handles debounced save
         onUpdate({
             routineDescription: routine,
             sleepHours,
@@ -41,7 +41,7 @@ const LifeContextBuilder: React.FC<Props> = ({ thl, profile, initialContext, ass
             studyMinutes
         });
     }
-  }, [routine, sleepHours, physicalMinutes, studyMinutes]);
+  }, [routine, sleepHours, physicalMinutes, studyMinutes, onUpdate]);
 
   const handleAnalyze = async () => {
     if (!routine.trim()) return;

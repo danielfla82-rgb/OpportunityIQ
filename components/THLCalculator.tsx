@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { FinancialProfile, CalculatedTHL, AppView } from '../types';
 import { DollarSign, Clock, Briefcase, ArrowRight, Activity, Car, Map, UserCog } from 'lucide-react';
 
@@ -10,10 +10,15 @@ interface Props {
 
 const THLCalculator: React.FC<Props> = ({ profile, onUpdate, onNavigate }) => {
   const [localProfile, setLocalProfile] = useState<FinancialProfile>(profile);
+  const lastEmittedProfile = useRef<string>(JSON.stringify(profile));
 
-  // Sync local state when prop changes (e.g. loaded from storage)
+  // Sync local state when prop changes (e.g. loaded from storage), avoiding loops
   useEffect(() => {
-    setLocalProfile(profile);
+    // Only update local state if the incoming prop is structurally different 
+    // from our current local state to prevent circular updates
+    if (JSON.stringify(profile) !== JSON.stringify(localProfile)) {
+      setLocalProfile(profile);
+    }
   }, [profile]);
 
   const calculate = (p: FinancialProfile): CalculatedTHL => {
@@ -37,12 +42,14 @@ const THLCalculator: React.FC<Props> = ({ profile, onUpdate, onNavigate }) => {
   };
 
   useEffect(() => {
-    const results = calculate(localProfile);
-    // Only trigger update if values differ to avoid potential loops if parent strictly checks reference
-    // But since this is a calculator, calculating on local change is correct behavior
-    onUpdate(localProfile, results);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [localProfile]); // Dependency on localProfile drives the calculation up
+    // Debounce check: Only emit if data actually changed from what we last sent/received
+    const currentProfileStr = JSON.stringify(localProfile);
+    if (currentProfileStr !== lastEmittedProfile.current) {
+        const results = calculate(localProfile);
+        lastEmittedProfile.current = currentProfileStr;
+        onUpdate(localProfile, results);
+    }
+  }, [localProfile, onUpdate]);
 
   const handleChange = (field: keyof FinancialProfile, value: string) => {
     setLocalProfile(prev => ({
