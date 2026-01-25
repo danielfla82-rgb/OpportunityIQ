@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { CalculatedTHL, DelegationItem, AppView, LifeContext, YearlyCompassData } from '../types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Sector } from 'recharts';
-import { Sparkles, ArrowRightLeft, ArrowRight, Infinity, Flag, Activity, Moon, Briefcase, Car, Coffee, Dumbbell, Brain, Clock, Crown, Target, CheckCircle2, AlertTriangle, Mountain, Rocket } from 'lucide-react';
+import { Sparkles, ArrowRightLeft, ArrowRight, Infinity, Flag, Activity, Moon, Briefcase, Car, Coffee, Dumbbell, Brain, Clock, Crown, Target, CheckCircle2, AlertTriangle, Mountain, Rocket, Eye } from 'lucide-react';
 import { getTimeWisdom, getDashboardAlignmentAnalysis } from '../services/geminiService';
 
 interface Props {
@@ -19,6 +19,7 @@ const Dashboard: React.FC<Props> = ({ thl, delegations, lifeContext, yearCompass
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [alignmentAnalysis, setAlignmentAnalysis] = useState<string>("");
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
+  const [forceShow, setForceShow] = useState(false); // New state to bypass welcome screen
   
   useEffect(() => {
     getTimeWisdom()
@@ -90,7 +91,8 @@ const Dashboard: React.FC<Props> = ({ thl, delegations, lifeContext, yearCompass
   const goalIcons = [Mountain, Rocket, Crown];
 
   // --- ZERO STATE (WELCOME) ---
-  if (thl.realTHL === 0) {
+  // Only show welcome screen if THL is 0 AND user hasn't forced the dashboard view
+  if (thl.realTHL === 0 && !forceShow) {
     return (
       <div className="relative min-h-[85vh] overflow-hidden flex items-end justify-start p-8 md:p-16 animate-fade-in border border-slate-800 bg-black">
         <div className="absolute inset-0 z-0">
@@ -113,13 +115,23 @@ const Dashboard: React.FC<Props> = ({ thl, delegations, lifeContext, yearCompass
              </p>
            </div>
            
-           <button 
-              onClick={() => onViewChange && onViewChange(AppView.THL_CALCULATOR)}
-              className="group flex items-center gap-6 bg-white hover:bg-emerald-500 text-black px-12 py-6 font-bold text-xl tracking-widest transition-all duration-300 mt-8 border border-white hover:border-emerald-500"
-           >
-              INICIAR PROTOCOLO
-              <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
-           </button>
+           <div className="flex flex-col sm:flex-row gap-4 mt-8">
+              <button 
+                 onClick={() => onViewChange && onViewChange(AppView.THL_CALCULATOR)}
+                 className="group flex items-center gap-6 bg-white hover:bg-emerald-500 text-black px-12 py-6 font-bold text-xl tracking-widest transition-all duration-300 border border-white hover:border-emerald-500"
+              >
+                 INICIAR PROTOCOLO
+                 <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
+              </button>
+
+              <button 
+                 onClick={() => setForceShow(true)}
+                 className="group flex items-center gap-2 bg-transparent hover:bg-white/10 text-slate-300 hover:text-white px-8 py-6 font-medium text-sm tracking-widest transition-all duration-300 border border-slate-700 hover:border-white"
+              >
+                 <Eye className="w-5 h-5" />
+                 VISUALIZAR DASHBOARD
+              </button>
+           </div>
         </div>
       </div>
     );
