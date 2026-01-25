@@ -1,5 +1,5 @@
 
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 import type { Chat } from "@google/genai";
 import { getGeminiApiKey, MODEL_CASCADE, SYSTEM_INSTRUCTIONS } from "./aiConfig";
 import { 
@@ -63,6 +63,8 @@ async function smartRunner(params: RunnerParams) {
         }
       }
 
+      // console.log(`Tentando conectar com modelo: ${modelName}...`);
+
       // Chamada via SDK novo (@google/genai)
       const response = await ai.models.generateContent({
         model: modelName,
@@ -70,20 +72,22 @@ async function smartRunner(params: RunnerParams) {
         config: config
       });
 
-      if (!response.text) {
+      // Validação da resposta
+      if (!response || !response.text) {
         throw new Error("EMPTY_RESPONSE");
       }
 
+      // Sucesso!
       return response.text;
 
     } catch (error: any) {
       lastError = error;
-      const errorMsg = error.message || '';
+      const errorMsg = error.message || JSON.stringify(error);
 
       // Segurança: Se a chave for vazada ou bloqueada (403), pare imediatamente.
       // Não adianta tentar outros modelos se a chave é inválida.
-      if (errorMsg.includes('403') || errorMsg.includes('API key not valid')) {
-        console.error("SECURITY ALERT: API Key Rejected/Leaked.");
+      if (errorMsg.includes('403') || errorMsg.includes('API key not valid') || errorMsg.includes('400')) {
+        console.error("SECURITY ALERT: API Key Rejected/Leaked/Invalid.");
         throw new Error("SECURITY_BLOCK_403");
       }
 
@@ -94,7 +98,7 @@ async function smartRunner(params: RunnerParams) {
   }
 
   // Se todos falharem
-  console.error("SmartRunner: Todos os modelos falharam.", lastError);
+  console.error("SmartRunner: Todos os modelos da cascata falharam.", lastError);
   throw lastError;
 }
 
@@ -103,16 +107,16 @@ async function smartRunner(params: RunnerParams) {
 const cleanAndParseJSON = (text: string | undefined): any => {
   if (!text) throw new Error("Texto vazio");
   try {
-    // Tenta parse direto
+    // 1. Tenta parse direto
     return JSON.parse(text);
   } catch (e) {
-    // Tenta extrair de blocos de código markdown ```json ... ```
+    // 2. Tenta extrair de blocos de código markdown ```json ... ```
     const codeBlockMatch = text.match(/```json\s*([\s\S]*?)\s*```/);
     if (codeBlockMatch?.[1]) {
       try { return JSON.parse(codeBlockMatch[1]); } catch(e2) {}
     }
     
-    // Tenta encontrar o primeiro { ou [ e o último } ou ]
+    // 3. Heurística: Tenta encontrar o primeiro { ou [ e o último } ou ]
     const firstBrace = text.indexOf('{');
     const firstBracket = text.indexOf('[');
     
@@ -131,7 +135,7 @@ const cleanAndParseJSON = (text: string | undefined): any => {
        try { return JSON.parse(text.substring(startIdx, endIdx + 1)); } catch(e3) {}
     }
 
-    console.error("Falha no parse JSON:", text);
+    console.error("Falha fatal no parse JSON. Texto bruto:", text);
     throw new Error("JSON_PARSE_ERROR");
   }
 };
@@ -141,19 +145,20 @@ const cleanAndParseJSON = (text: string | undefined): any => {
 export const analyzeAsset = async (name: string, description: string, value: number, year: number): Promise<AssetItem['aiAnalysis']> => {
   try {
     const text = await smartRunner({
-      contents: `Analise o bem "${name}" (${description}), comprado por R$${value} em ${year}. Estime valor atual e custos mensais.`,
+      contents: `Analise o bem "${name}" (${description}), comprado por R$${value} em ${year}. Estime valor atual de mercado (currentValueEstimated) e custo mensal oculto (maintenanceCostMonthlyEstimate). Responda JSON com os campos: currentValueEstimated (number), depreciationTrend (APPRECIATING, DEPRECIATING, STABLE), liquidityScore (0-100), maintenanceCostMonthlyEstimate (number), commentary (string curta).`,
       isJson: true,
       systemInstruction: SYSTEM_INSTRUCTIONS.JSON_MODE
     });
     return cleanAndParseJSON(text);
   } catch (e: any) {
-    if (e.message === 'SECURITY_BLOCK_403') return { currentValueEstimated: value, depreciationTrend: 'STABLE', liquidityScore: 0, maintenanceCostMonthlyEstimate: 0, commentary: "ERRO DE SEGURANÇA: Chave API Inválida." };
+    console.error("Erro analyzeAsset:", e);
+    const isSecurity = e.message === 'SECURITY_BLOCK_403';
     return {
-      currentValueEstimated: value * 0.9,
+      currentValueEstimated: value, // Retorna valor original como fallback
       depreciationTrend: 'STABLE',
-      liquidityScore: 50,
-      maintenanceCostMonthlyEstimate: value * 0.005,
-      commentary: "Estimativa offline (IA indisponível)."
+      liquidityScore: 0,
+      maintenanceCostMonthlyEstimate: 0,
+      commentary: isSecurity ? "ERRO CRÍTICO: Chave de API Inválida/Bloqueada." : "Sistema Offline: Não foi possível conectar à IA."
     };
   }
 };
@@ -168,9 +173,9 @@ export const getPhilosophicalAnalysis = async (dilemma: string): Promise<RazorAn
   } catch (e: any) {
     if (e.message === 'SECURITY_BLOCK_403') return { occam: "Erro 403", inversion: "Chave API Bloqueada", regret: "Verifique Configurações", synthesis: "Sistema pausado por segurança." };
     return {
-      occam: "Simplifique.",
-      inversion: "Evite a ruína.",
-      regret: "Pense em 10 anos.",
+      occam: "Simplifique o problema.",
+      inversion: "O que evitar?",
+      regret: "Pense no longo prazo.",
       synthesis: "IA em repouso. Use sua intuição."
     };
   }
@@ -178,20 +183,20 @@ export const getPhilosophicalAnalysis = async (dilemma: string): Promise<RazorAn
 
 export const analyzeLifeContext = async (routine: string, assets: AssetItem[], thl: number, profile: FinancialProfile, sleepHours: number = 7): Promise<ContextAnalysisResult> => {
   try {
+    const assetSummary = assets.map(a => a.name).join(", ");
     const text = await smartRunner({
-      contents: `Auditoria Forense. Renda: R$ ${profile.netIncome}, THL: R$ ${thl.toFixed(2)}, Sono: ${sleepHours}h. Rotina: "${routine}". Ativos: ${assets.length}`,
+      contents: `Auditoria Forense de Vida. Renda Líquida: R$ ${profile.netIncome}. THL Real: R$ ${thl.toFixed(2)}. Sono: ${sleepHours}h. Rotina descrita: "${routine}". Ativos: ${assetSummary}. Identifique gargalos, custos irrecuperáveis e sugira delegações.`,
       isJson: true,
-      systemInstruction: "Você é Zeus. Use as Metamorfoses de Nietzsche. Retorne JSON estrito com suggestions, sunkCostSuspects, lifestyleRisks, summary, eternalReturnScore, matrixCoordinates."
+      systemInstruction: "Você é Zeus. Use as Metamorfoses de Nietzsche. Retorne JSON estrito com: delegationSuggestions (array de objetos {name, cost, hoursSaved, frequency, category, archetype}), sunkCostSuspects (array), lifestyleRisks (array de strings), summary (string), eternalReturnScore (0-100), eternalReturnAnalysis (string), matrixCoordinates ({x, y, quadrantLabel})."
     });
     return cleanAndParseJSON(text);
   } catch (e: any) {
     console.error("Erro na Auditoria:", e);
-    // Fallback local básico
     return {
       delegationSuggestions: [],
       sunkCostSuspects: [],
       lifestyleRisks: ["Erro de conexão com Inteligência Central"],
-      summary: e.message === 'SECURITY_BLOCK_403' ? "ACESSO NEGADO: Chave de API revogada ou inválida." : "Não foi possível conectar à IA.",
+      summary: e.message === 'SECURITY_BLOCK_403' ? "ACESSO NEGADO: Chave de API revogada ou inválida." : "Não foi possível conectar à IA. Tente novamente.",
       eternalReturnScore: 50,
       matrixCoordinates: { x: 50, y: 50, quadrantLabel: "Desconhecido" }
     };
@@ -201,9 +206,12 @@ export const analyzeLifeContext = async (routine: string, assets: AssetItem[], t
 // Chat especializado usa streaming e precisa instanciar direto, mas usa o helper de Key
 export const createSpecialistChat = (thl: number, context: string): Chat => {
   const ai = createClient();
-  // Tenta o modelo primário para chat
+  // Tenta o modelo primário para chat (Smart Runner é difícil em stream, usamos o cascade[0] ou [1])
+  // Para estabilidade, usamos o segundo da lista se o primeiro for experimental
+  const modelToUse = MODEL_CASCADE.includes('gemini-1.5-flash') ? 'gemini-1.5-flash' : MODEL_CASCADE[0];
+  
   return ai.chats.create({
-    model: MODEL_CASCADE[0], 
+    model: modelToUse, 
     config: { 
       systemInstruction: `Persona: Nietzsche + Pareto. THL: R$ ${thl.toFixed(2)}. Contexto: ${context}` 
     },
@@ -217,7 +225,7 @@ export const getSunkCostAnalysis = async (scenario: SunkCostScenario, thl: Calcu
       isJson: false 
     });
   } catch (e) {
-    return "O passado é imutável. Foque apenas no custo futuro.";
+    return "O passado é imutável. Foque apenas no custo futuro. (IA Offline)";
   }
 };
 
@@ -291,7 +299,7 @@ export const getDashboardAlignmentAnalysis = async (timeData: any[], goals: Year
   try {
     return await smartRunner({ contents: `Analise alinhamento tempo/metas: ${goals.goal1.text}`, isJson: false });
   } catch (e) {
-    return "Mantenha o foco.";
+    return "Mantenha o foco. (IA Offline)";
   }
 };
 
