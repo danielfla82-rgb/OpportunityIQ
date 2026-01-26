@@ -136,8 +136,9 @@ const SpecialistChat: React.FC<Props> = ({ thl, lifeContext }) => {
       console.error("Chat Error", error);
       let errorMsg = "O Oráculo silenciou. Verifique sua conexão.";
       
-      if (error.message?.includes('API key')) {
-        errorMsg = "ERRO CRÍTICO: Chave de API inválida ou ausente. Verifique suas variáveis de ambiente (VITE_API_KEY).";
+      // Detalhes técnicos amigáveis para o erro de API Key
+      if (error.message?.includes('API key') || error.message?.includes('403')) {
+        errorMsg = "ERRO CRÍTICO: Chave de API inválida ou ausente.\n\nVerifique se o arquivo .env contém uma das variáveis:\nVITE_GOOGLE_API_KEY\nVITE_API_KEY";
       } else if (error.message?.includes('429')) {
         errorMsg = "Tráfego intenso no Oráculo (Erro 429). Tente novamente em alguns segundos.";
       }

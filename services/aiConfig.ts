@@ -6,33 +6,48 @@
 
 /**
  * Recupera a API Key.
- * Tenta process.env (padrão) e fallbacks para Vite (import.meta.env).
+ * Implementa estratégia de busca robusta para garantir funcionamento em diversos ambientes (Vite, Next, etc).
  */
 export const getGeminiApiKey = (): string => {
-  // 1. Tenta variável de ambiente padrão (Node/System)
-  if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
-    return process.env.API_KEY.trim();
+  let key = '';
+
+  // 1. Tenta variáveis injetadas pelo Vite (import.meta.env)
+  try {
+    // @ts-ignore
+    if (import.meta && import.meta.env) {
+      // @ts-ignore
+      if (import.meta.env.VITE_GOOGLE_API_KEY) key = import.meta.env.VITE_GOOGLE_API_KEY;
+      // @ts-ignore
+      else if (import.meta.env.VITE_API_KEY) key = import.meta.env.VITE_API_KEY;
+      // @ts-ignore
+      else if (import.meta.env.GOOGLE_API_KEY) key = import.meta.env.GOOGLE_API_KEY;
+      // @ts-ignore
+      else if (import.meta.env.API_KEY) key = import.meta.env.API_KEY;
+    }
+  } catch (e) {
+    // Ignore errors accessing import.meta
   }
 
-  // 2. Tenta variável injetada pelo Vite (Padrão VITE_)
-  // @ts-ignore
-  if (typeof import.meta !== 'undefined' && import.meta.env) {
-    // @ts-ignore
-    if (import.meta.env.VITE_API_KEY) return import.meta.env.VITE_API_KEY.trim();
-    // @ts-ignore
-    if (import.meta.env.API_KEY) return import.meta.env.API_KEY.trim();
+  // 2. Se não encontrou, tenta process.env (Node/System/Webpack)
+  if (!key && typeof process !== 'undefined' && process.env) {
+    if (process.env.VITE_GOOGLE_API_KEY) key = process.env.VITE_GOOGLE_API_KEY;
+    else if (process.env.VITE_API_KEY) key = process.env.VITE_API_KEY;
+    else if (process.env.GOOGLE_API_KEY) key = process.env.GOOGLE_API_KEY;
+    else if (process.env.API_KEY) key = process.env.API_KEY;
   }
 
-  return '';
+  return key ? key.trim() : '';
 };
 
 /**
  * Estratégia Smart Runner (Cascata de Modelos)
+ * Tenta modelos mais recentes e rápidos primeiro, caindo para versões estáveis se necessário.
  */
 export const MODEL_CASCADE = [
-  'gemini-3-flash-preview',  // Primário: Rápido e inteligente
-  'gemini-3-pro-preview',    // Fallback: Mais robusto
-  'gemini-flash-latest'      // Legacy: Último recurso
+  'gemini-3-flash-preview',  // Primário: Última geração (Preview)
+  'gemini-2.0-flash-exp',    // Secundário: Versão 2.0 Experimental (Muito estável)
+  'gemini-3-pro-preview',    // Terciário: Modelo Pro (Mais lento, maior raciocínio)
+  'gemini-flash-latest'      // Fallback: Versão estável legado
 ];
 
 export const SYSTEM_INSTRUCTIONS = {
