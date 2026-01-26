@@ -34,6 +34,9 @@ const AssetInventory: React.FC<Props> = ({ assets, setAssets, onBack }) => {
     category: 'OTHER'
   });
 
+  // SAFE ARRAY ACCESS
+  const safeAssets = assets || [];
+
   const handleAdd = async () => {
     if (!newItem.name || !newItem.purchaseValue) return;
     setLoading(true);
@@ -122,7 +125,7 @@ const AssetInventory: React.FC<Props> = ({ assets, setAssets, onBack }) => {
     const { data: { session } } = await supabase.auth.getSession();
     const userId = session?.user?.id;
 
-    const originalAsset = assets.find(a => a.id === editingId);
+    const originalAsset = safeAssets.find(a => a.id === editingId);
     if (!originalAsset) return;
 
     const updatedAsset: AssetItem = {
@@ -151,12 +154,12 @@ const AssetInventory: React.FC<Props> = ({ assets, setAssets, onBack }) => {
   };
 
   // Summary Metrics
-  const totalInvested = assets.reduce((acc, curr) => acc + curr.purchaseValue, 0);
-  const currentNetWorth = assets.reduce((acc, curr) => acc + (curr.aiAnalysis?.currentValueEstimated || curr.purchaseValue), 0);
-  const monthlyLiability = assets.reduce((acc, curr) => acc + (curr.aiAnalysis?.maintenanceCostMonthlyEstimate || 0), 0);
+  const totalInvested = safeAssets.reduce((acc, curr) => acc + curr.purchaseValue, 0);
+  const currentNetWorth = safeAssets.reduce((acc, curr) => acc + (curr.aiAnalysis?.currentValueEstimated || curr.purchaseValue), 0);
+  const monthlyLiability = safeAssets.reduce((acc, curr) => acc + (curr.aiAnalysis?.maintenanceCostMonthlyEstimate || 0), 0);
 
   // Sorting: Highest Value First
-  const sortedAssets = [...assets].sort((a, b) => {
+  const sortedAssets = [...safeAssets].sort((a, b) => {
     const valA = a.aiAnalysis?.currentValueEstimated ?? a.purchaseValue;
     const valB = b.aiAnalysis?.currentValueEstimated ?? b.purchaseValue;
     return valB - valA;

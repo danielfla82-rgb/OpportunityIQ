@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { LifeContext, ContextAnalysisResult, CalculatedTHL, AssetItem, AppView, FinancialProfile } from '../types';
 import { analyzeLifeContext } from '../services/geminiService';
@@ -73,9 +74,10 @@ const LifeContextBuilder: React.FC<Props> = ({ thl, profile, initialContext, ass
   const committedTime = sleepHours + workHoursDaily + commuteHoursDaily + physicalHours + studyHours;
   const trueFreeTimeDaily = Math.max(0, 24 - committedTime);
 
-  // Asset Summary
-  const netWorth = assets.reduce((acc, curr) => acc + (curr.aiAnalysis?.currentValueEstimated || curr.purchaseValue), 0);
-  const liabilities = assets.reduce((acc, curr) => acc + (curr.aiAnalysis?.maintenanceCostMonthlyEstimate || 0), 0);
+  // Asset Summary (Safe Array Access)
+  const safeAssets = assets || [];
+  const netWorth = safeAssets.reduce((acc, curr) => acc + (curr.aiAnalysis?.currentValueEstimated || curr.purchaseValue), 0);
+  const liabilities = safeAssets.reduce((acc, curr) => acc + (curr.aiAnalysis?.maintenanceCostMonthlyEstimate || 0), 0);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 animate-fade-in pb-12">
@@ -122,14 +124,14 @@ const LifeContextBuilder: React.FC<Props> = ({ thl, profile, initialContext, ass
                   <Wallet className="w-5 h-5 text-emerald-400" />
                   <h3 className="font-bold text-slate-200 uppercase tracking-widest text-sm">Inventário de Bens</h3>
                 </div>
-                {assets.length > 0 && (
+                {safeAssets.length > 0 && (
                    <span className="text-xs font-mono text-emerald-400 bg-emerald-950/30 px-2 py-0.5 rounded border border-emerald-900">
                       R$ {netWorth.toLocaleString()}
                    </span>
                 )}
             </div>
             
-            {assets.length === 0 ? (
+            {safeAssets.length === 0 ? (
                <div className="text-center py-6 bg-slate-950/30 rounded-lg border border-dashed border-slate-800">
                   <p className="text-xs text-slate-500 mb-3">
                      Você ainda não cadastrou seus bens (carro, imóveis, eletrônicos).
@@ -145,16 +147,16 @@ const LifeContextBuilder: React.FC<Props> = ({ thl, profile, initialContext, ass
             ) : (
                <div className="bg-slate-950/30 rounded-lg p-4 border border-slate-800">
                   <div className="flex justify-between items-center mb-2">
-                     <span className="text-xs text-slate-400">{assets.length} Itens Cadastrados</span>
+                     <span className="text-xs text-slate-400">{safeAssets.length} Itens Cadastrados</span>
                      <span className="text-xs text-red-400 flex items-center gap-1"><AlertTriangle className="w-3 h-3"/> Passivo: R${liabilities}/mês</span>
                   </div>
                   <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-                     {assets.slice(0, 3).map(a => (
+                     {safeAssets.slice(0, 3).map(a => (
                         <span key={a.id} className="text-[10px] bg-slate-900 border border-slate-700 px-2 py-1 rounded text-slate-300 whitespace-nowrap">
                            {a.name}
                         </span>
                      ))}
-                     {assets.length > 3 && <span className="text-[10px] text-slate-500 self-center">+{assets.length - 3}</span>}
+                     {safeAssets.length > 3 && <span className="text-[10px] text-slate-500 self-center">+{safeAssets.length - 3}</span>}
                   </div>
                   <button 
                      onClick={() => onNavigate(AppView.ASSET_INVENTORY)}

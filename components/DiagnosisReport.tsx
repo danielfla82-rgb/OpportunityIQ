@@ -16,9 +16,14 @@ interface Props {
 const DiagnosisReport: React.FC<Props> = ({ result, thl, profile, onApply, onBack, onNavigate }) => {
   const [showMatrixInfo, setShowMatrixInfo] = useState(false);
 
+  // SAFE ARRAY ACCESS: Handle potential undefined props
+  const suggestions = result.delegationSuggestions || [];
+  const sunkCostSuspects = result.sunkCostSuspects || [];
+  const lifestyleRisks = result.lifestyleRisks || [];
+
   // Calculations for the report
-  const potentialHoursReclaimed = result.delegationSuggestions.reduce((acc, curr) => acc + curr.hoursSaved, 0);
-  const estimatedCost = result.delegationSuggestions.reduce((acc, curr) => acc + curr.cost, 0);
+  const potentialHoursReclaimed = suggestions.reduce((acc, curr) => acc + (curr.hoursSaved || 0), 0);
+  const estimatedCost = suggestions.reduce((acc, curr) => acc + (curr.cost || 0), 0);
   const valueGenerated = potentialHoursReclaimed * thl.realTHL;
   const netPotentialGain = valueGenerated - estimatedCost;
 
@@ -356,7 +361,7 @@ const DiagnosisReport: React.FC<Props> = ({ result, thl, profile, onApply, onBac
                  Oportunidades Detectadas
               </h3>
               <span className="text-xs bg-emerald-950 text-emerald-400 px-2 py-1 rounded border border-emerald-900">
-                 {result.delegationSuggestions.length} Sugestões
+                 {suggestions.length} Sugestões
               </span>
            </div>
 
@@ -377,7 +382,7 @@ const DiagnosisReport: React.FC<Props> = ({ result, thl, profile, onApply, onBac
            </div>
 
            <div className="space-y-3">
-              {result.delegationSuggestions.map((item, idx) => (
+              {suggestions.map((item, idx) => (
                  <div key={idx} className="bg-slate-900 border border-slate-800 p-4 rounded-lg flex justify-between items-center group hover:border-emerald-500/30 transition-colors">
                     <div>
                        <div className="font-medium text-slate-200">{item.name}</div>
@@ -392,7 +397,7 @@ const DiagnosisReport: React.FC<Props> = ({ result, thl, profile, onApply, onBac
                     </div>
                  </div>
               ))}
-              {result.delegationSuggestions.length === 0 && (
+              {suggestions.length === 0 && (
                  <div className="text-center p-4 text-slate-500 text-sm italic border border-dashed border-slate-800 rounded-lg">
                     Nenhuma oportunidade óbvia de delegação encontrada.
                  </div>
@@ -410,7 +415,7 @@ const DiagnosisReport: React.FC<Props> = ({ result, thl, profile, onApply, onBac
            {/* Sunk Cost Warnings */}
            <div className="space-y-4">
               <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800 pb-2">Suspeitas de Custo Irrecuperável</h4>
-              {result.sunkCostSuspects.map((item, idx) => (
+              {sunkCostSuspects.map((item, idx) => (
                  <div key={idx} className="bg-amber-950/10 border border-amber-500/20 p-4 rounded-lg flex flex-col gap-3">
                     <div>
                         <div className="text-amber-200 font-medium mb-1">{item.title}</div>
@@ -418,7 +423,7 @@ const DiagnosisReport: React.FC<Props> = ({ result, thl, profile, onApply, onBac
                     </div>
                  </div>
               ))}
-              {result.sunkCostSuspects.length === 0 && (
+              {sunkCostSuspects.length === 0 && (
                  <p className="text-slate-500 text-sm">Nenhum projeto crítico detectado.</p>
               )}
            </div>
@@ -426,7 +431,7 @@ const DiagnosisReport: React.FC<Props> = ({ result, thl, profile, onApply, onBac
            {/* Lifestyle Risks */}
            <div className="space-y-4 pt-4">
               <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800 pb-2">Riscos de Estilo de Vida</h4>
-              {result.lifestyleRisks.map((risk, idx) => (
+              {lifestyleRisks.map((risk, idx) => (
                  <div key={idx} className="bg-red-950/10 border border-red-500/20 p-4 rounded-lg flex flex-col gap-3">
                     <div className="flex items-start gap-3">
                         <ShieldAlert className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
@@ -441,7 +446,7 @@ const DiagnosisReport: React.FC<Props> = ({ result, thl, profile, onApply, onBac
                     </button>
                  </div>
               ))}
-               {result.lifestyleRisks.length === 0 && (
+               {lifestyleRisks.length === 0 && (
                  <p className="text-slate-500 text-sm">Estilo de vida parece compatível.</p>
               )}
            </div>

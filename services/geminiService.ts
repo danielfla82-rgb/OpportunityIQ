@@ -195,7 +195,19 @@ export const analyzeLifeContext = async (routine: string, assets: AssetItem[], t
       isJson: true,
       systemInstruction: "Você é Zeus. Use as Metamorfoses de Nietzsche. Retorne JSON estrito com: delegationSuggestions (array de objetos {name, cost, hoursSaved, frequency, category, archetype}), sunkCostSuspects (array), lifestyleRisks (array de strings), summary (string), eternalReturnScore (0-100), eternalReturnAnalysis (string), matrixCoordinates ({x, y, quadrantLabel})."
     });
-    return cleanAndParseJSON(text);
+    
+    // SANITIZAÇÃO: Garante que arrays nunca sejam undefined
+    const json = cleanAndParseJSON(text);
+    return {
+        delegationSuggestions: Array.isArray(json.delegationSuggestions) ? json.delegationSuggestions : [],
+        sunkCostSuspects: Array.isArray(json.sunkCostSuspects) ? json.sunkCostSuspects : [],
+        lifestyleRisks: Array.isArray(json.lifestyleRisks) ? json.lifestyleRisks : [],
+        summary: json.summary || "Análise concluída, mas sem resumo textual.",
+        eternalReturnScore: json.eternalReturnScore || 50,
+        eternalReturnAnalysis: json.eternalReturnAnalysis || "",
+        matrixCoordinates: json.matrixCoordinates || { x: 50, y: 50, quadrantLabel: "Desconhecido" }
+    };
+
   } catch (e: any) {
     console.error("Erro na Auditoria:", e);
     return {
