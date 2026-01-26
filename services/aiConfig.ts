@@ -41,16 +41,16 @@ export const getGeminiApiKey = (): string => {
 
 /**
  * Estratégia Smart Runner (Cascata de Modelos)
- * Tenta modelos mais recentes e rápidos primeiro, caindo para versões estáveis se necessário.
+ * Prioridade ajustada para modelos Flash (Velocidade/Custo) conforme solicitado.
  */
 export const MODEL_CASCADE = [
-  'gemini-3-flash-preview',  // Primário: Última geração (Preview)
-  'gemini-2.0-flash-exp',    // Secundário: Versão 2.0 Experimental (Muito estável)
-  'gemini-3-pro-preview',    // Terciário: Modelo Pro (Mais lento, maior raciocínio)
-  'gemini-flash-latest'      // Fallback: Versão estável legado
+  'gemini-2.0-flash-exp',    // Primário: Melhor balanço atual de velocidade/inteligência
+  'gemini-flash-latest',     // Secundário: Estável solicitado
+  'gemini-3-flash-preview',  // Terciário: Nova geração (Preview)
+  'gemini-3-pro-preview'     // Fallback: Raciocínio complexo se Flash falhar
 ];
 
 export const SYSTEM_INSTRUCTIONS = {
   DEFAULT: "Você é Zeus, um estrategista estoico e brutalmente racional. Responda com precisão cirúrgica.",
-  JSON_MODE: "Retorne APENAS JSON válido. Sem markdown, sem explicações adicionais."
+  JSON_MODE: "Retorne APENAS JSON válido. Sem markdown, sem explicações adicionais. Estrutura estrita."
 };

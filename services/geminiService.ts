@@ -58,6 +58,10 @@ async function smartRunner(params: RunnerParams) {
 
       if (params.isJson) {
         config.responseMimeType = "application/json";
+        // Reforça a instrução de sistema para JSON se não houver uma específica
+        if (!config.systemInstruction.includes("JSON")) {
+             config.systemInstruction += " " + SYSTEM_INSTRUCTIONS.JSON_MODE;
+        }
         if (params.responseSchema) {
           config.responseSchema = params.responseSchema;
         }
@@ -110,8 +114,8 @@ const cleanAndParseJSON = (text: string | undefined): any => {
     // 1. Tenta parse direto
     return JSON.parse(text);
   } catch (e) {
-    // 2. Tenta extrair de blocos de código markdown ```json ... ```
-    const codeBlockMatch = text.match(/```json\s*([\s\S]*?)\s*```/);
+    // 2. Tenta extrair de blocos de código markdown (case insensitive, opcional 'json')
+    const codeBlockMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
     if (codeBlockMatch?.[1]) {
       try { return JSON.parse(codeBlockMatch[1]); } catch(e2) {}
     }
@@ -123,6 +127,7 @@ const cleanAndParseJSON = (text: string | undefined): any => {
     let startIdx = -1;
     let endIdx = -1;
 
+    // Determina onde começa o JSON
     if (firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) {
         startIdx = firstBrace;
         endIdx = text.lastIndexOf('}');
@@ -132,7 +137,8 @@ const cleanAndParseJSON = (text: string | undefined): any => {
     }
 
     if (startIdx !== -1 && endIdx !== -1) {
-       try { return JSON.parse(text.substring(startIdx, endIdx + 1)); } catch(e3) {}
+       const jsonCandidate = text.substring(startIdx, endIdx + 1);
+       try { return JSON.parse(jsonCandidate); } catch(e3) {}
     }
 
     console.error("Falha fatal no parse JSON. Texto bruto:", text);
