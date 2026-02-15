@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { MonthlyNote, MonthlyMetrics, MonthlyTags } from '../types';
 import { 
   Calendar, Save, CheckCircle2, PenLine, ChevronLeft, ChevronRight, 
   Edit3, Bold, Italic, List, Image as ImageIcon, Download, Palette, 
-  Maximize2, X, Trash2, Plus, BarChart2, Tag, Wand2, ChevronDown
+  Maximize2, X, Trash2, Plus, BarChart2, Tag, Wand2, ChevronDown, ChevronUp, Check, Layout
 } from 'lucide-react';
 import { Tooltip } from 'react-tooltip';
 
@@ -57,7 +56,6 @@ const TAG_OPTIONS = {
 };
 
 // Logic for Auto-NPS based on tags
-// Key: Tag String, Value: Partial<MonthlyMetrics> modifiers (positive or negative)
 const TAG_IMPACTS: Record<string, Partial<MonthlyMetrics>> = {
   "Doença/Lesão": { energyPhysical: 2, sleepQuality: 4, jobPerformance: 4 },
   "Viagem Trabalho": { energyPhysical: 5, sleepQuality: 5, studyConsistency: 3 },
@@ -138,53 +136,144 @@ const MetricSlider: React.FC<{ id: keyof MonthlyMetrics, value: number, onChange
 };
 
 const TagSelector = ({ label, options, selected, onSelect, onRemove }: { label: string, options: string[], selected: string[], onSelect: (t: string) => void, onRemove: (t: string) => void }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [newTag, setNewTag] = useState("");
+  
   // Defensive check: Ensure selected is always an array
   const safeSelected = Array.isArray(selected) ? selected : [];
 
-  return (
-  <div className="mb-4">
-    <div className="flex items-center justify-between mb-2">
-        <label className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">{label}</label>
-        
-        {/* Dropdown Customizado */}
-        <div className="relative group">
-            <select 
-                className="appearance-none bg-slate-900 border border-slate-700 hover:border-emerald-500/50 text-slate-300 text-[10px] py-1 pl-2 pr-6 rounded cursor-pointer outline-none focus:ring-1 focus:ring-emerald-500 transition-colors uppercase font-bold tracking-wide"
-                onChange={(e) => {
-                    if (e.target.value) {
-                        onSelect(e.target.value);
-                        e.target.value = ""; // Reset selection
-                    }
-                }}
-                value=""
-            >
-                <option value="" disabled>+ Adicionar</option>
-                {options.filter(opt => !safeSelected.includes(opt)).map(opt => (
-                    <option key={opt} value={opt} className="text-sm normal-case text-slate-900 bg-slate-200">
-                        {opt}
-                    </option>
-                ))}
-            </select>
-            <ChevronDown className="w-3 h-3 text-slate-500 absolute right-1.5 top-1.5 pointer-events-none group-hover:text-emerald-400" />
-        </div>
-    </div>
+  const handleCreate = () => {
+    if (newTag.trim()) {
+        // Capitalize first letter logic optional, keeping raw input for flexibility
+        onSelect(newTag.trim());
+        setNewTag("");
+        setIsCreating(false);
+    }
+  };
 
-    <div className="flex flex-wrap gap-2 min-h-[30px] bg-slate-950/30 p-2 rounded-lg border border-slate-800/50">
-      {safeSelected.length === 0 && (
-          <span className="text-xs text-slate-600 italic">Nenhuma tag selecionada.</span>
-      )}
-      {safeSelected.map(tag => (
-        <span 
-            key={tag} 
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium bg-indigo-900/30 border border-indigo-500/30 text-indigo-300 group transition-all hover:bg-indigo-900/50 hover:border-indigo-500/60"
-        >
-            {tag}
-            <button onClick={() => onRemove(tag)} className="hover:text-white transition-colors">
-                <X className="w-3 h-3" />
-            </button>
-        </span>
-      ))}
-    </div>
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') handleCreate();
+    if (e.key === 'Escape') {
+        setIsCreating(false);
+        setNewTag("");
+    }
+  };
+
+  return (
+  <div className={`border border-slate-800 rounded-lg bg-slate-900/40 mb-3 transition-all ${isOpen ? 'ring-1 ring-emerald-500/30 border-emerald-500/30' : 'hover:border-slate-700'}`}>
+    {/* Header (Always Visible) - Acts as Accordion Trigger */}
+    <button 
+        onClick={() => !isCreating && setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between p-3 text-left focus:outline-none disabled:cursor-default"
+        disabled={isCreating}
+    >
+        <div className="flex flex-col md:flex-row md:items-center gap-2 overflow-hidden w-full pr-4">
+            <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold shrink-0 whitespace-nowrap">{label}</span>
+            
+            {/* Preview of selected tags (Compact View) */}
+            <div className="flex flex-wrap gap-1.5">
+                {safeSelected.length > 0 ? (
+                     safeSelected.map(tag => (
+                         <span key={tag} className="text-[9px] px-1.5 py-0.5 bg-indigo-500/20 text-indigo-300 rounded border border-indigo-500/30 truncate max-w-[120px]">
+                             {tag}
+                         </span>
+                     ))
+                ) : (
+                    <span className="text-[10px] text-slate-700 italic flex items-center gap-1">
+                        <Plus className="w-3 h-3" /> Adicionar
+                    </span>
+                )}
+            </div>
+        </div>
+        <div className="text-slate-500 hover:text-emerald-400 transition-colors">
+             {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+        </div>
+    </button>
+
+    {/* Body (Collapsible) */}
+    {isOpen && (
+        <div className="p-3 border-t border-slate-800 bg-slate-950/30 animate-fade-in">
+            <div className="flex items-center justify-between mb-3">
+                {isCreating ? (
+                    <div className="flex gap-2 w-full animate-fade-in">
+                        <input 
+                            type="text"
+                            autoFocus
+                            placeholder="Nome da nova tag..."
+                            className="flex-1 bg-slate-950 border border-emerald-500/50 rounded px-3 py-1.5 text-xs text-white outline-none focus:ring-1 focus:ring-emerald-500"
+                            value={newTag}
+                            onChange={(e) => setNewTag(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                        />
+                        <button 
+                            onClick={handleCreate}
+                            className="bg-emerald-600 hover:bg-emerald-500 text-white p-1.5 rounded transition-colors"
+                            title="Confirmar"
+                        >
+                            <Check className="w-4 h-4" />
+                        </button>
+                        <button 
+                            onClick={() => { setIsCreating(false); setNewTag(""); }}
+                            className="bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white p-1.5 rounded transition-colors"
+                            title="Cancelar"
+                        >
+                            <X className="w-4 h-4" />
+                        </button>
+                    </div>
+                ) : (
+                    <div className="relative group w-full">
+                        <select 
+                            className="w-full appearance-none bg-slate-900 border border-slate-700 hover:border-emerald-500/50 text-slate-300 text-xs py-2 pl-3 pr-8 rounded cursor-pointer outline-none focus:ring-1 focus:ring-emerald-500 transition-colors font-medium"
+                            onChange={(e) => {
+                                if (e.target.value === '__CREATE__') {
+                                    setIsCreating(true);
+                                    e.target.value = "";
+                                } else if (e.target.value) {
+                                    onSelect(e.target.value);
+                                    e.target.value = ""; // Reset selection
+                                }
+                            }}
+                            value=""
+                        >
+                            <option value="" disabled>Selecione ou crie nova...</option>
+                            <option value="__CREATE__" className="text-emerald-400 font-bold bg-slate-900">+ Criar Tag Personalizada...</option>
+                            <option disabled className="bg-slate-800">──────────</option>
+                            {options.filter(opt => !safeSelected.includes(opt)).map(opt => (
+                                <option key={opt} value={opt} className="text-slate-900 bg-slate-200">
+                                    {opt}
+                                </option>
+                            ))}
+                        </select>
+                        <ChevronDown className="w-4 h-4 text-slate-500 absolute right-3 top-2.5 pointer-events-none group-hover:text-emerald-400" />
+                    </div>
+                )}
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {safeSelected.length === 0 && !isCreating && (
+                  <div className="w-full text-center py-2 text-xs text-slate-600 italic border border-dashed border-slate-800 rounded">
+                      Nenhum item selecionado. Use o menu acima.
+                  </div>
+              )}
+              {safeSelected.map(tag => (
+                <span 
+                    key={tag} 
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-indigo-900/40 border border-indigo-500/40 text-indigo-200 group transition-all hover:bg-red-900/30 hover:border-red-500/40 hover:text-red-300 cursor-pointer"
+                    onClick={() => onRemove(tag)}
+                    title="Clique para remover"
+                >
+                    {tag}
+                    <X className="w-3 h-3 opacity-60 group-hover:opacity-100" />
+                </span>
+              ))}
+            </div>
+            
+            <div className="mt-3 text-[10px] text-slate-600 text-right italic">
+                Clique na tag para remover.
+            </div>
+        </div>
+    )}
   </div>
   );
 };
@@ -201,6 +290,7 @@ const MonthlyReflections: React.FC<Props> = ({ notes, onSave }) => {
     context: [], sentiment: [], macro: []
   });
   const [isSaving, setIsSaving] = useState(false);
+  const [isMetricsExpanded, setIsMetricsExpanded] = useState(false);
   const editorRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -482,72 +572,94 @@ const MonthlyReflections: React.FC<Props> = ({ notes, onSave }) => {
                   </button>
                </div>
 
-               {/* 2. Structured Data Section (New) */}
-               <div className="bg-slate-900 border-b border-slate-800 p-6 overflow-y-auto max-h-[350px] shrink-0 custom-scrollbar">
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                     
-                     {/* 2a. Metrics Sliders (Left Column - 4 cols) */}
-                     <div className="lg:col-span-4 border-r border-slate-800 pr-0 lg:pr-8">
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-2 text-emerald-400">
-                                <BarChart2 className="w-4 h-4" />
-                                <h4 className="text-sm font-bold uppercase tracking-widest">Métricas (NPS)</h4>
+               {/* 2. Structured Data Section (Accordion Wrapper) */}
+               <div className="bg-slate-900 border-b border-slate-800 shrink-0 transition-all">
+                   <button
+                        onClick={() => setIsMetricsExpanded(!isMetricsExpanded)}
+                        className="w-full flex items-center justify-between px-6 py-4 hover:bg-slate-800/50 transition-colors group focus:outline-none"
+                   >
+                        <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-lg transition-colors ${isMetricsExpanded ? 'bg-indigo-500/20 text-indigo-400' : 'bg-slate-800 text-slate-400 group-hover:text-slate-300'}`}>
+                                <Layout className="w-5 h-5" />
                             </div>
-                            <button 
-                                onClick={handleAutoSuggestMetrics}
-                                className="flex items-center gap-1.5 text-[10px] font-bold text-indigo-300 hover:text-white bg-indigo-900/30 hover:bg-indigo-600 border border-indigo-500/30 rounded-full px-2.5 py-1 transition-all group"
-                                title="Preencher automaticamente baseado nas tags selecionadas"
-                            >
-                                <Wand2 className="w-3 h-3 group-hover:rotate-12 transition-transform" /> Sugerir
-                            </button>
+                            <div className="text-left">
+                                <h4 className="text-sm font-bold text-white uppercase tracking-wider">Métricas & Contexto</h4>
+                                <p className="text-[10px] text-slate-500">
+                                    {isMetricsExpanded ? 'Clique para recolher' : 'Definir NPS, Tags e Sentimento'}
+                                </p>
+                            </div>
                         </div>
-                        
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                           {(Object.keys(currentMetrics) as Array<keyof MonthlyMetrics>).map(key => (
-                              <MetricSlider 
-                                key={key} 
-                                id={key} 
-                                value={currentMetrics[key]} 
-                                onChange={(v) => setCurrentMetrics(prev => ({ ...prev, [key]: v }))} 
-                              />
-                           ))}
-                        </div>
-                     </div>
+                        {isMetricsExpanded ? <ChevronUp className="w-5 h-5 text-slate-500" /> : <ChevronDown className="w-5 h-5 text-slate-500" />}
+                   </button>
 
-                     {/* 2b. Context Tags (Right Column - 8 cols) */}
-                     <div className="lg:col-span-8">
-                        <div className="flex items-center gap-2 mb-6 text-indigo-400">
-                           <Tag className="w-4 h-4" />
-                           <h4 className="text-sm font-bold uppercase tracking-widest">Contexto & Sentimento</h4>
-                        </div>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
-                            <TagSelector 
-                              label="Fatores Externos" 
-                              options={TAG_OPTIONS.context} 
-                              selected={currentTags.context}
-                              onSelect={(t) => setCurrentTags(prev => ({ ...prev, context: [...prev.context, t] }))}
-                              onRemove={(t) => setCurrentTags(prev => ({ ...prev, context: prev.context.filter(i => i !== t) }))}
-                            />
-                            
-                            <TagSelector 
-                              label="Estado Interno" 
-                              options={TAG_OPTIONS.sentiment} 
-                              selected={currentTags.sentiment}
-                              onSelect={(t) => setCurrentTags(prev => ({ ...prev, sentiment: [...prev.sentiment, t] }))}
-                              onRemove={(t) => setCurrentTags(prev => ({ ...prev, sentiment: prev.sentiment.filter(i => i !== t) }))}
-                            />
-                            
-                            <TagSelector 
-                              label="Resultado Macro" 
-                              options={TAG_OPTIONS.macro} 
-                              selected={currentTags.macro}
-                              onSelect={(t) => setCurrentTags(prev => ({ ...prev, macro: [...prev.macro, t] }))}
-                              onRemove={(t) => setCurrentTags(prev => ({ ...prev, macro: prev.macro.filter(i => i !== t) }))}
-                            />
-                        </div>
-                     </div>
-                  </div>
+                   {isMetricsExpanded && (
+                       <div className="px-6 pb-6 pt-2 animate-fade-in border-t border-slate-800/50 overflow-y-auto max-h-[350px] custom-scrollbar">
+                          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                             
+                             {/* 2a. Metrics Sliders (Left Column - 4 cols) */}
+                             <div className="lg:col-span-4 border-r border-slate-800 pr-0 lg:pr-8">
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="flex items-center gap-2 text-emerald-400">
+                                        <BarChart2 className="w-4 h-4" />
+                                        <h4 className="text-sm font-bold uppercase tracking-widest">Métricas (NPS)</h4>
+                                    </div>
+                                    <button 
+                                        onClick={handleAutoSuggestMetrics}
+                                        className="flex items-center gap-1.5 text-[10px] font-bold text-indigo-300 hover:text-white bg-indigo-900/30 hover:bg-indigo-600 border border-indigo-500/30 rounded-full px-2.5 py-1 transition-all group"
+                                        title="Preencher automaticamente baseado nas tags selecionadas"
+                                    >
+                                        <Wand2 className="w-3 h-3 group-hover:rotate-12 transition-transform" /> Sugerir
+                                    </button>
+                                </div>
+                                
+                                <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                                   {(Object.keys(currentMetrics) as Array<keyof MonthlyMetrics>).map(key => (
+                                      <MetricSlider 
+                                        key={key} 
+                                        id={key} 
+                                        value={currentMetrics[key]} 
+                                        onChange={(v) => setCurrentMetrics(prev => ({ ...prev, [key]: v }))} 
+                                      />
+                                   ))}
+                                </div>
+                             </div>
+
+                             {/* 2b. Context Tags (Right Column - 8 cols) */}
+                             <div className="lg:col-span-8">
+                                <div className="flex items-center gap-2 mb-6 text-indigo-400">
+                                   <Tag className="w-4 h-4" />
+                                   <h4 className="text-sm font-bold uppercase tracking-widest">Contexto & Sentimento</h4>
+                                </div>
+                                
+                                <div className="grid grid-cols-1 gap-y-2">
+                                    <TagSelector 
+                                      label="Fatores Externos" 
+                                      options={TAG_OPTIONS.context} 
+                                      selected={currentTags.context}
+                                      onSelect={(t) => setCurrentTags(prev => ({ ...prev, context: [...prev.context, t] }))}
+                                      onRemove={(t) => setCurrentTags(prev => ({ ...prev, context: prev.context.filter(i => i !== t) }))}
+                                    />
+                                    
+                                    <TagSelector 
+                                      label="Estado Interno" 
+                                      options={TAG_OPTIONS.sentiment} 
+                                      selected={currentTags.sentiment}
+                                      onSelect={(t) => setCurrentTags(prev => ({ ...prev, sentiment: [...prev.sentiment, t] }))}
+                                      onRemove={(t) => setCurrentTags(prev => ({ ...prev, sentiment: prev.sentiment.filter(i => i !== t) }))}
+                                    />
+                                    
+                                    <TagSelector 
+                                      label="Resultado Macro" 
+                                      options={TAG_OPTIONS.macro} 
+                                      selected={currentTags.macro}
+                                      onSelect={(t) => setCurrentTags(prev => ({ ...prev, macro: [...prev.macro, t] }))}
+                                      onRemove={(t) => setCurrentTags(prev => ({ ...prev, macro: prev.macro.filter(i => i !== t) }))}
+                                    />
+                                </div>
+                             </div>
+                          </div>
+                       </div>
+                   )}
                </div>
 
                {/* 3. Toolbar */}
