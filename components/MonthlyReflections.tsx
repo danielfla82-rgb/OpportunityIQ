@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { MonthlyNote, MonthlyMetrics, MonthlyTags } from '../types';
 import { 
@@ -136,7 +137,11 @@ const MetricSlider: React.FC<{ id: keyof MonthlyMetrics, value: number, onChange
   );
 };
 
-const TagSelector = ({ label, options, selected, onSelect, onRemove }: { label: string, options: string[], selected: string[], onSelect: (t: string) => void, onRemove: (t: string) => void }) => (
+const TagSelector = ({ label, options, selected, onSelect, onRemove }: { label: string, options: string[], selected: string[], onSelect: (t: string) => void, onRemove: (t: string) => void }) => {
+  // Defensive check: Ensure selected is always an array
+  const safeSelected = Array.isArray(selected) ? selected : [];
+
+  return (
   <div className="mb-4">
     <div className="flex items-center justify-between mb-2">
         <label className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">{label}</label>
@@ -154,7 +159,7 @@ const TagSelector = ({ label, options, selected, onSelect, onRemove }: { label: 
                 value=""
             >
                 <option value="" disabled>+ Adicionar</option>
-                {options.filter(opt => !selected.includes(opt)).map(opt => (
+                {options.filter(opt => !safeSelected.includes(opt)).map(opt => (
                     <option key={opt} value={opt} className="text-sm normal-case text-slate-900 bg-slate-200">
                         {opt}
                     </option>
@@ -165,10 +170,10 @@ const TagSelector = ({ label, options, selected, onSelect, onRemove }: { label: 
     </div>
 
     <div className="flex flex-wrap gap-2 min-h-[30px] bg-slate-950/30 p-2 rounded-lg border border-slate-800/50">
-      {selected.length === 0 && (
+      {safeSelected.length === 0 && (
           <span className="text-xs text-slate-600 italic">Nenhuma tag selecionada.</span>
       )}
-      {selected.map(tag => (
+      {safeSelected.map(tag => (
         <span 
             key={tag} 
             className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium bg-indigo-900/30 border border-indigo-500/30 text-indigo-300 group transition-all hover:bg-indigo-900/50 hover:border-indigo-500/60"
@@ -181,7 +186,8 @@ const TagSelector = ({ label, options, selected, onSelect, onRemove }: { label: 
       ))}
     </div>
   </div>
-);
+  );
+};
 
 const MonthlyReflections: React.FC<Props> = ({ notes, onSave }) => {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
@@ -208,7 +214,13 @@ const MonthlyReflections: React.FC<Props> = ({ notes, onSave }) => {
       setCurrentMetrics(note?.metrics || {
         energyPhysical: 5, mentalClarity: 5, jobPerformance: 5, studyConsistency: 5, studyQuality: 5, sleepQuality: 5
       });
-      setCurrentTags(note?.tags || { context: [], sentiment: [], macro: [] });
+      
+      // CRITICAL FIX: Ensure tags have all properties initialized to arrays
+      setCurrentTags({
+        context: note?.tags?.context || [],
+        sentiment: note?.tags?.sentiment || [],
+        macro: note?.tags?.macro || []
+      });
       
       if (editorRef.current) {
         editorRef.current.innerHTML = note?.content || "";
@@ -224,8 +236,11 @@ const MonthlyReflections: React.FC<Props> = ({ notes, onSave }) => {
         studyConsistency: 5, studyQuality: 5, sleepQuality: 5
     };
 
-    // 2. Collect all active tags
-    const allTags = [...currentTags.context, ...currentTags.sentiment, ...currentTags.macro];
+    // 2. Collect all active tags safely
+    const activeContext = Array.isArray(currentTags.context) ? currentTags.context : [];
+    const activeSentiment = Array.isArray(currentTags.sentiment) ? currentTags.sentiment : [];
+    const activeMacro = Array.isArray(currentTags.macro) ? currentTags.macro : [];
+    const allTags = [...activeContext, ...activeSentiment, ...activeMacro];
     
     // 3. Apply impacts
     let impactsApplied = 0;
@@ -236,14 +251,8 @@ const MonthlyReflections: React.FC<Props> = ({ notes, onSave }) => {
             impactsApplied++;
             (Object.keys(impact) as Array<keyof MonthlyMetrics>).forEach(key => {
                 if (impact[key] !== undefined) {
-                    // Average the current value with the impact target to allow multiple tags to influence
-                    // e.g. If current is 5, and impact is 2 -> (5+2)/2 = 3.5 -> 4
-                    // But to make it stronger, let's just take the impact if it's the first one, or average if cumulative.
-                    // Simple approach: Use weighted average favoring the extreme.
-                    
                     const target = impact[key]!;
                     const current = newMetrics[key];
-                    
                     // Logic: Move current halfway towards target
                     newMetrics[key] = Math.round((current + target) / 2);
                 }
@@ -256,8 +265,6 @@ const MonthlyReflections: React.FC<Props> = ({ notes, onSave }) => {
         return;
     }
 
-    // 4. Force specific overrides (e.g., if Férias, job is 0 or irrelevant, but maybe we keep neutral)
-    // Using the spread to update state
     setCurrentMetrics(newMetrics);
   };
 
