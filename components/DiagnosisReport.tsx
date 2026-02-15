@@ -7,7 +7,7 @@ import { ScatterChart, Scatter, XAxis, YAxis, ZAxis, ResponsiveContainer, Refere
 interface Props {
   result: ContextAnalysisResult;
   thl: CalculatedTHL;
-  profile?: FinancialProfile; // Optional to prevent breaking if not passed immediately, though logic depends on it
+  profile?: FinancialProfile; 
   onApply: () => void;
   onBack: () => void;
   onNavigate: (view: AppView) => void;
@@ -16,24 +16,30 @@ interface Props {
 const DiagnosisReport: React.FC<Props> = ({ result, thl, profile, onApply, onBack, onNavigate }) => {
   const [showMatrixInfo, setShowMatrixInfo] = useState(false);
 
-  // SAFE ARRAY ACCESS: Handle potential undefined props
-  const suggestions = result.delegationSuggestions || [];
-  const sunkCostSuspects = result.sunkCostSuspects || [];
-  const lifestyleRisks = result.lifestyleRisks || [];
+  // SAFE ARRAY ACCESS: Defensively handle potential undefined props from corrupted data
+  const suggestions = Array.isArray(result?.delegationSuggestions) ? result.delegationSuggestions : [];
+  const sunkCostSuspects = Array.isArray(result?.sunkCostSuspects) ? result.sunkCostSuspects : [];
+  const lifestyleRisks = Array.isArray(result?.lifestyleRisks) ? result.lifestyleRisks : [];
 
-  // Calculations for the report
-  const potentialHoursReclaimed = suggestions.reduce((acc, curr) => acc + (curr.hoursSaved || 0), 0);
-  const estimatedCost = suggestions.reduce((acc, curr) => acc + (curr.cost || 0), 0);
+  // Calculations for the report with explicit filtering
+  const potentialHoursReclaimed = suggestions
+    .filter(i => i && typeof i.hoursSaved === 'number')
+    .reduce((acc, curr) => acc + (curr.hoursSaved || 0), 0);
+    
+  const estimatedCost = suggestions
+    .filter(i => i && typeof i.cost === 'number')
+    .reduce((acc, curr) => acc + (curr.cost || 0), 0);
+    
   const valueGenerated = potentialHoursReclaimed * thl.realTHL;
   const netPotentialGain = valueGenerated - estimatedCost;
 
   // Chart Data Preparation
-  const coords = result.matrixCoordinates || { x: 50, y: 50, quadrantLabel: 'Em Análise' };
+  const coords = result?.matrixCoordinates || { x: 50, y: 50, quadrantLabel: 'Em Análise' };
   const matrixData = [{ x: coords.x, y: coords.y, z: 100, label: 'Você' }];
 
   // Calculate "Sovereignty Score" (Distance from 100,100)
   // Max distance (from 0,0 to 100,100) is ~141.42
-  const distFromOptimal = Math.sqrt(Math.pow(100 - coords.x, 2) + Math.pow(100 - coords.y, 2));
+  const distFromOptimal = Math.sqrt(Math.pow(100 - (coords.x || 0), 2) + Math.pow(100 - (coords.y || 0), 2));
   const sovereigntyScore = Math.max(0, Math.min(100, 100 - (distFromOptimal / 1.41))).toFixed(0);
 
   // Tactical Insight Logic
@@ -76,17 +82,15 @@ const DiagnosisReport: React.FC<Props> = ({ result, thl, profile, onApply, onBac
     };
   };
 
-  const tactic = getTacticalInsight(coords.x, coords.y);
+  const tactic = getTacticalInsight(coords.x || 50, coords.y || 50);
   const TacticIcon = tactic.icon;
 
   // Conversions
-  // Fallback to profile income if THL not calculated yet to ensure chart works
   const calculatedMonthlyIncome = thl.realTHL * thl.monthlyTotalHours;
   const displayedMonthlyIncome = calculatedMonthlyIncome > 0 ? calculatedMonthlyIncome : (profile?.netIncome || 0);
   const weeklyIncome = displayedMonthlyIncome / 4.33;
 
   // --- IBGE/FGV LOGIC (Updated to Monthly Income Standards) ---
-  // Base 2024 Estimates for "Classe Social por Renda Domiciliar (adaptado para individual)"
   const getSocialClass = (income: number) => {
     if (income >= 22000) return { 
         label: "Classe A", 
@@ -146,7 +150,7 @@ const DiagnosisReport: React.FC<Props> = ({ result, thl, profile, onApply, onBac
 
   const bellCurveData = generateBellCurveData();
 
-  const isDefaultSummary = result.summary.includes("Análise carregada do histórico") || result.summary.length < 20;
+  const isDefaultSummary = result.summary?.includes("Análise carregada do histórico") || (result.summary?.length || 0) < 20;
 
   return (
     <div className="max-w-4xl mx-auto animate-fade-in pb-12">
@@ -178,7 +182,7 @@ const DiagnosisReport: React.FC<Props> = ({ result, thl, profile, onApply, onBac
             </div>
             
             <div className="h-48 w-full relative mb-4 bg-slate-950/50 rounded-lg border border-slate-800/50">
-               {/* Fixed Overlay Labels for better rendering reliability */}
+               {/* Fixed Overlay Labels */}
                <div className="absolute top-2 left-2 text-[10px] text-amber-500/70 font-bold uppercase tracking-wider z-10 pointer-events-none">O Camelo</div>
                <div className="absolute top-2 right-2 text-[10px] text-emerald-500/70 font-bold uppercase tracking-wider z-10 text-right pointer-events-none">Übermensch</div>
                <div className="absolute bottom-2 left-2 text-[10px] text-slate-600 font-bold uppercase tracking-wider z-10 pointer-events-none">Último Homem</div>
@@ -263,13 +267,11 @@ const DiagnosisReport: React.FC<Props> = ({ result, thl, profile, onApply, onBac
                         </defs>
                         <Area type="monotone" dataKey="density" stroke="#6366f1" fill="url(#gradientCurve)" strokeWidth={2} />
                         
-                        {/* Class Dividers (Approximated Percentiles based on FGV) */}
                         <ReferenceLine x={25} stroke="#334155" strokeDasharray="3 3" label={{ position: 'insideBottom', value: 'D', fill: '#64748b', fontSize: 10 }} />
                         <ReferenceLine x={50} stroke="#334155" strokeDasharray="3 3" label={{ position: 'insideBottom', value: 'C', fill: '#64748b', fontSize: 10 }} />
                         <ReferenceLine x={85} stroke="#334155" strokeDasharray="3 3" label={{ position: 'insideBottom', value: 'B', fill: '#64748b', fontSize: 10 }} />
                         <ReferenceLine x={95} stroke="#334155" strokeDasharray="3 3" label={{ position: 'insideBottom', value: 'A', fill: '#64748b', fontSize: 10 }} />
 
-                        {/* User Position */}
                         <ReferenceLine 
                            x={socialClass.percentile} 
                            stroke={socialClass.color} 
@@ -335,7 +337,7 @@ const DiagnosisReport: React.FC<Props> = ({ result, thl, profile, onApply, onBac
          <div className="flex-1 relative z-10">
             <h3 className="text-sm font-bold text-indigo-400 uppercase tracking-widest mb-3">Resumo Executivo</h3>
             <p className="text-lg text-slate-200 font-serif leading-relaxed italic">
-               "{result.summary}"
+               "{result.summary || "Sem resumo disponível."}"
             </p>
          </div>
          

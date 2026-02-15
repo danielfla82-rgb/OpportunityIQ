@@ -20,9 +20,9 @@ const DEFAULT_PROFILE: FinancialProfile = {
 };
 
 const DEFAULT_COMPASS: YearlyCompassData = {
-  goal1: { text: "", indicator: "", completed: false },
-  goal2: { text: "", indicator: "", completed: false },
-  goal3: { text: "", indicator: "", completed: false },
+  goal1: { text: "", indicator: "", completed: false, status: "", lastUpdateMonth: "" },
+  goal2: { text: "", indicator: "", completed: false, status: "", lastUpdateMonth: "" },
+  goal3: { text: "", indicator: "", completed: false, status: "", lastUpdateMonth: "" },
   financialGoal: { targetMonthlyIncome: 0, targetTHL: 0, deadlineMonth: "" }
 };
 
@@ -113,13 +113,13 @@ const MOCK_DATA: FullUserData = {
     }
   },
   yearCompass: {
-    goal1: { text: "Atingir R$ 100k/mês de Faturamento", indicator: "Faturamento mensal recorrente > 100k", completed: false },
-    goal2: { text: "Delegar 100% do operacional da empresa", indicator: "Menos de 2h/semana em tarefas manuais", completed: false },
-    goal3: { text: "Completar um Ironman 70.3", indicator: "Cruzar a linha de chegada < 6h", completed: true },
+    goal1: { text: "Atingir R$ 100k/mês de Faturamento", indicator: "Faturamento mensal recorrente > 100k", completed: false, status: "Faturamento atual 65k", lastUpdateMonth: "Jan" },
+    goal2: { text: "Delegar 100% do operacional da empresa", indicator: "Menos de 2h/semana em tarefas manuais", completed: false, status: "Contratei assistente", lastUpdateMonth: "Fev" },
+    goal3: { text: "Completar um Ironman 70.3", indicator: "Cruzar a linha de chegada < 6h", completed: true, status: "Concluído em Floripa", lastUpdateMonth: "Dez" },
     financialGoal: { targetMonthlyIncome: 80000, targetTHL: 500, deadlineMonth: "Dezembro 2025" }
   },
   monthlyNotes: [
-    { month: 1, year: 2025, content: "Janeiro: Foco total em aumentar a THL. Cortei reuniões inúteis.", updatedAt: new Date().toISOString() }
+    { month: 1, year: 2025, content: "Janeiro: Foco total em aumentar a THL. Cortei reuniões inúteis.", updatedAt: new Date().toISOString(), images: [] }
   ]
 };
 
@@ -246,11 +246,13 @@ export const dataService = {
       eternalReturnText: contextData.eternal_return_text
     } : null;
 
-    const analysisResult: ContextAnalysisResult | null = contextData && contextData.matrix_x ? {
-      delegationSuggestions: [], 
-      sunkCostSuspects: [], 
-      lifestyleRisks: [],
-      summary: "Análise carregada do histórico.",
+    const hasAnalysisData = contextData && contextData.matrix_x !== null && contextData.matrix_x !== undefined;
+    
+    const analysisResult: ContextAnalysisResult | null = hasAnalysisData ? {
+      delegationSuggestions: (contextData.analysis_data?.delegationSuggestions || []).filter((i: any) => !!i), 
+      sunkCostSuspects: (contextData.analysis_data?.sunkCostSuspects || []).filter((i: any) => !!i), 
+      lifestyleRisks: (contextData.analysis_data?.lifestyleRisks || []).filter((i: any) => !!i),
+      summary: contextData.analysis_summary || "Análise carregada do histórico.",
       eternalReturnScore: contextData.eternal_return_score,
       eternalReturnAnalysis: contextData.eternal_return_text,
       matrixCoordinates: {
@@ -264,17 +266,23 @@ export const dataService = {
       goal1: { 
           text: compassData.goal1_text || "", 
           indicator: compassData.goal1_indicator || "", 
-          completed: compassData.goal1_completed 
+          completed: compassData.goal1_completed,
+          status: compassData.goal1_status || "",
+          lastUpdateMonth: compassData.goal1_last_month || ""
       },
       goal2: { 
           text: compassData.goal2_text || "", 
           indicator: compassData.goal2_indicator || "", 
-          completed: compassData.goal2_completed 
+          completed: compassData.goal2_completed,
+          status: compassData.goal2_status || "",
+          lastUpdateMonth: compassData.goal2_last_month || ""
       },
       goal3: { 
           text: compassData.goal3_text || "", 
           indicator: compassData.goal3_indicator || "", 
-          completed: compassData.goal3_completed 
+          completed: compassData.goal3_completed,
+          status: compassData.goal3_status || "",
+          lastUpdateMonth: compassData.goal3_last_month || ""
       },
       financialGoal: {
         targetMonthlyIncome: Number(compassData.financial_target_income),
@@ -288,6 +296,7 @@ export const dataService = {
       month: n.month,
       year: n.year,
       content: n.content,
+      images: n.images || [], // Load images array
       updatedAt: n.updated_at
     }));
 
@@ -325,12 +334,21 @@ export const dataService = {
       goal1_text: data.goal1.text,
       goal1_indicator: data.goal1.indicator,
       goal1_completed: data.goal1.completed,
+      goal1_status: data.goal1.status, // NEW
+      goal1_last_month: data.goal1.lastUpdateMonth, // NEW
+      
       goal2_text: data.goal2.text,
       goal2_indicator: data.goal2.indicator,
       goal2_completed: data.goal2.completed,
+      goal2_status: data.goal2.status, // NEW
+      goal2_last_month: data.goal2.lastUpdateMonth, // NEW
+
       goal3_text: data.goal3.text,
       goal3_indicator: data.goal3.indicator,
       goal3_completed: data.goal3.completed,
+      goal3_status: data.goal3.status, // NEW
+      goal3_last_month: data.goal3.lastUpdateMonth, // NEW
+
       financial_target_income: data.financialGoal.targetMonthlyIncome,
       financial_deadline: data.financialGoal.deadlineMonth,
       updated_at: new Date().toISOString()
@@ -338,7 +356,7 @@ export const dataService = {
   },
 
   /**
-   * Upserts Life Context
+   * Upserts Life Context & Analysis Result
    */
   saveContext: async (userId: string, context: LifeContext, analysis?: ContextAnalysisResult) => {
     if (!isSupabaseConfigured || isDemo(userId)) {
@@ -357,10 +375,18 @@ export const dataService = {
       last_updated: new Date().toISOString()
     };
 
-    if (analysis && analysis.matrixCoordinates) {
-      payload.matrix_x = analysis.matrixCoordinates.x;
-      payload.matrix_y = analysis.matrixCoordinates.y;
-      payload.matrix_label = analysis.matrixCoordinates.quadrantLabel;
+    if (analysis) {
+      if (analysis.matrixCoordinates) {
+        payload.matrix_x = analysis.matrixCoordinates.x;
+        payload.matrix_y = analysis.matrixCoordinates.y;
+        payload.matrix_label = analysis.matrixCoordinates.quadrantLabel;
+      }
+      payload.analysis_summary = analysis.summary;
+      payload.analysis_data = {
+         delegationSuggestions: analysis.delegationSuggestions,
+         sunkCostSuspects: analysis.sunkCostSuspects,
+         lifestyleRisks: analysis.lifestyleRisks
+      };
     }
 
     return supabase.from('life_contexts').upsert(payload);
@@ -391,7 +417,11 @@ export const dataService = {
     if (existing) {
        return supabase
          .from('monthly_notes')
-         .update({ content: note.content, updated_at: new Date().toISOString() })
+         .update({ 
+             content: note.content, 
+             images: note.images, // Update images
+             updated_at: new Date().toISOString() 
+         })
          .eq('id', existing.id);
     } else {
        return supabase
@@ -401,6 +431,7 @@ export const dataService = {
             month: note.month,
             year: note.year,
             content: note.content,
+            images: note.images, // Insert images
             updated_at: new Date().toISOString()
          });
     }

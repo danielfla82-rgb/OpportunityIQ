@@ -44,10 +44,9 @@ export const getGeminiApiKey = (): string => {
  * Prioridade ajustada para modelos Flash (Velocidade/Custo) conforme solicitado.
  */
 export const MODEL_CASCADE = [
-  'gemini-2.0-flash-exp',    // Primário: Melhor balanço atual de velocidade/inteligência
-  'gemini-flash-latest',     // Secundário: Estável solicitado
-  'gemini-3-flash-preview',  // Terciário: Nova geração (Preview)
-  'gemini-3-pro-preview'     // Fallback: Raciocínio complexo se Flash falhar
+  'gemini-3-flash-preview',  // Novo padrão: Rápido e estável
+  'gemini-3-pro-preview',    // Fallback: Raciocínio complexo
+  'gemini-flash-latest',     // Fallback: Legado (1.5 Flash)
 ];
 
 export const SYSTEM_INSTRUCTIONS = {

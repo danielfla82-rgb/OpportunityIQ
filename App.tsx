@@ -261,7 +261,11 @@ const App: React.FC = () => {
     });
 
     if (session?.user?.id) {
-      await dataService.saveNote(session.user.id, note);
+      const { error } = await dataService.saveNote(session.user.id, note);
+      if (error) {
+        console.error("Save failed:", error);
+        alert("Erro ao salvar nota na nuvem. Verifique se o comando SQL de migração 'images' foi executado no Supabase.");
+      }
     }
   };
 

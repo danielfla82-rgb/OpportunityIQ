@@ -1,7 +1,7 @@
 
 import React from 'react';
-import { YearlyCompassData, CalculatedTHL } from '../types';
-import { Compass, Target, DollarSign, CheckCircle2, Circle, Mountain, Flag, Calendar, Rocket, Crown, BarChart2 } from 'lucide-react';
+import { YearlyCompassData, CalculatedTHL, GoalData } from '../types';
+import { Compass, Target, DollarSign, CheckCircle2, Circle, Mountain, Flag, Calendar, Rocket, Crown, BarChart2, TrendingUp, RefreshCcw } from 'lucide-react';
 
 interface Props {
   data: YearlyCompassData;
@@ -11,34 +11,20 @@ interface Props {
 
 const YearlyGoals: React.FC<Props> = ({ data, thl, onUpdate }) => {
 
-  const handleChange = (field: keyof YearlyCompassData, value: any) => {
-    onUpdate({ ...data, [field]: value });
+  const handleFinancialChange = (field: 'targetMonthlyIncome' | 'deadlineMonth', value: any) => {
+     let newFinancial = { ...data.financialGoal, [field]: value };
+     onUpdate({ ...data, financialGoal: newFinancial });
   };
 
-  const handleGoalTextChange = (goalKey: 'goal1' | 'goal2' | 'goal3', text: string) => {
+  const updateGoal = (key: 'goal1' | 'goal2' | 'goal3', field: keyof GoalData, value: any) => {
     onUpdate({
-      ...data,
-      [goalKey]: { ...data[goalKey], text }
-    });
-  };
-
-  const handleGoalIndicatorChange = (goalKey: 'goal1' | 'goal2' | 'goal3', indicator: string) => {
-    onUpdate({
-      ...data,
-      [goalKey]: { ...data[goalKey], indicator }
+        ...data,
+        [key]: { ...data[key], [field]: value }
     });
   };
 
   const toggleGoalCompletion = (goalKey: 'goal1' | 'goal2' | 'goal3') => {
-    onUpdate({
-      ...data,
-      [goalKey]: { ...data[goalKey], completed: !data[goalKey].completed }
-    });
-  };
-
-  const handleFinancialChange = (field: 'targetMonthlyIncome' | 'deadlineMonth', value: any) => {
-     let newFinancial = { ...data.financialGoal, [field]: value };
-     onUpdate({ ...data, financialGoal: newFinancial });
+    updateGoal(goalKey, 'completed', !data[goalKey].completed);
   };
 
   // --- DYNAMIC CALCULATIONS ---
@@ -65,7 +51,7 @@ const YearlyGoals: React.FC<Props> = ({ data, thl, onUpdate }) => {
         </div>
         <h2 className="text-3xl font-serif text-slate-100">Bússola Anual</h2>
         <p className="text-slate-400 mt-2 max-w-lg mx-auto">
-           "Quem tem um 'porquê' enfrenta qualquer 'como'." Defina suas 3 Grandes Pedras e como você medirá o sucesso.
+           "Quem tem um 'porquê' enfrenta qualquer 'como'." Defina suas 3 Grandes Pedras e acompanhe o progresso real mensalmente.
         </p>
       </div>
 
@@ -149,6 +135,7 @@ const YearlyGoals: React.FC<Props> = ({ data, thl, onUpdate }) => {
                        ${goal.completed ? 'border-indigo-500/30 bg-indigo-950/10' : 'border-slate-800 hover:border-slate-700'}
                     `}
                  >
+                    {/* Goal Header & Text */}
                     <div className="flex items-start gap-4 mb-4">
                        <div className="mt-1">
                           <button 
@@ -180,32 +167,61 @@ const YearlyGoals: React.FC<Props> = ({ data, thl, onUpdate }) => {
                              `}
                              placeholder={`Qual é a sua meta "${goalLabel}"?`}
                              value={goal.text}
-                             onChange={(e) => handleGoalTextChange(key, e.target.value)}
+                             onChange={(e) => updateGoal(key, 'text', e.target.value)}
                              rows={2}
                              disabled={goal.completed}
                           />
                        </div>
                     </div>
 
-                    {/* Indicator Field */}
-                    <div className={`mt-4 pl-12 border-t border-slate-800/50 pt-4 transition-opacity ${goal.completed ? 'opacity-50' : 'opacity-100'}`}>
-                        <label className="text-[10px] text-indigo-400 uppercase tracking-widest font-bold mb-2 flex items-center gap-1">
-                           <BarChart2 className="w-3 h-3" /> Indicador de Sucesso (KPI)
-                        </label>
-                        <input 
-                           type="text"
-                           className="w-full bg-slate-950/50 border border-slate-800 rounded-lg py-2 px-3 text-sm text-slate-300 focus:border-indigo-500 outline-none placeholder:text-slate-700"
-                           placeholder="Ex: 150 check-ins na academia; 80% de acerto no simulado"
-                           value={goal.indicator || ''}
-                           onChange={(e) => handleGoalIndicatorChange(key, e.target.value)}
-                           disabled={goal.completed}
-                        />
+                    {/* Progress Tracking Section */}
+                    <div className={`mt-4 border-t border-slate-800/50 pt-4 grid grid-cols-1 md:grid-cols-2 gap-4 transition-opacity ${goal.completed ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
+                        
+                        {/* KPI / Target */}
+                        <div>
+                           <label className="text-[10px] text-indigo-400 uppercase tracking-widest font-bold mb-2 flex items-center gap-1">
+                              <BarChart2 className="w-3 h-3" /> Indicador de Sucesso (KPI)
+                           </label>
+                           <input 
+                              type="text"
+                              className="w-full bg-slate-950/50 border border-slate-800 rounded-lg py-2 px-3 text-sm text-slate-300 focus:border-indigo-500 outline-none placeholder:text-slate-700"
+                              placeholder="Onde quer chegar?"
+                              value={goal.indicator || ''}
+                              onChange={(e) => updateGoal(key, 'indicator', e.target.value)}
+                           />
+                        </div>
+
+                        {/* Current Status Tracker */}
+                        <div className="bg-slate-950/30 rounded-lg p-2 border border-slate-800/50 flex flex-col gap-2">
+                           <div className="flex items-center justify-between">
+                              <label className="text-[10px] text-emerald-400 uppercase tracking-widest font-bold flex items-center gap-1">
+                                 <TrendingUp className="w-3 h-3" /> Status Atual
+                              </label>
+                              <div className="flex items-center gap-1">
+                                 <RefreshCcw className="w-3 h-3 text-slate-600" />
+                                 <input 
+                                    type="text" 
+                                    placeholder="Mês (ex: Fev)"
+                                    className="bg-transparent text-[10px] text-slate-400 w-16 text-right focus:text-white outline-none placeholder:text-slate-700 uppercase"
+                                    value={goal.lastUpdateMonth || ''}
+                                    onChange={(e) => updateGoal(key, 'lastUpdateMonth', e.target.value)}
+                                 />
+                              </div>
+                           </div>
+                           <input 
+                              type="text"
+                              className="w-full bg-transparent border-0 text-sm text-emerald-100 focus:ring-0 p-0 placeholder:text-slate-600/50"
+                              placeholder="Onde você está hoje? (Ex: 40% concluído)"
+                              value={goal.status || ''}
+                              onChange={(e) => updateGoal(key, 'status', e.target.value)}
+                           />
+                        </div>
                     </div>
                     
                     {/* Decorative element for incomplete goals */}
                     {!goal.completed && (
-                       <div className="absolute bottom-6 right-6 opacity-0 group-hover:opacity-10 transition-opacity pointer-events-none">
-                          <GoalIcon className="w-24 h-24 text-white opacity-5" />
+                       <div className="absolute bottom-6 right-6 opacity-0 group-hover:opacity-5 transition-opacity pointer-events-none">
+                          <GoalIcon className="w-24 h-24 text-white" />
                        </div>
                     )}
                  </div>

@@ -7,24 +7,25 @@ const Documentation: React.FC = () => {
   const [copiedMigration, setCopiedMigration] = useState(false);
 
   const migrationScript = `
--- Migração v5.5: Adicionar Tabela de Notas Mensais
-create table if not exists public.monthly_notes (
-  id uuid default uuid_generate_v4() primary key,
-  user_id uuid references auth.users not null,
-  month numeric not null,
-  year numeric not null,
-  content text,
-  updated_at timestamp with time zone default timezone('utc'::text, now())
-);
-alter table public.monthly_notes enable row level security;
+-- Migração v5.8: Rastreamento de Progresso das Metas
+-- Adiciona colunas para acompanhar o Status Atual e o Mês de Referência de cada Grande Pedra.
 
--- Policies
-drop policy if exists "Users can all own notes" on monthly_notes;
-create policy "Users can all own notes" on monthly_notes for all using (auth.uid() = user_id);
+ALTER TABLE public.year_compass 
+ADD COLUMN IF NOT EXISTS goal1_status text,
+ADD COLUMN IF NOT EXISTS goal1_last_month text,
+ADD COLUMN IF NOT EXISTS goal2_status text,
+ADD COLUMN IF NOT EXISTS goal2_last_month text,
+ADD COLUMN IF NOT EXISTS goal3_status text,
+ADD COLUMN IF NOT EXISTS goal3_last_month text;
 
--- Opcional: Limpeza de cache de permissões
-grant all privileges on all tables in schema public to service_role;
-grant all privileges on all tables in schema public to authenticated;
+-- (Anterior) Migração v5.7: Suporte a Galeria de Imagens
+ALTER TABLE public.monthly_notes 
+ADD COLUMN IF NOT EXISTS images text[] DEFAULT '{}';
+
+-- (Anterior) Migração v5.6: Persistência do Diagnóstico da IA
+ALTER TABLE public.life_contexts 
+ADD COLUMN IF NOT EXISTS analysis_summary text,
+ADD COLUMN IF NOT EXISTS analysis_data jsonb;
   `.trim();
 
   const sqlScript = `
@@ -42,7 +43,7 @@ create table if not exists public.profiles (
 );
 alter table public.profiles enable row level security;
 
--- Políticas Idempotentes (Remove antes de criar para evitar erro 42710)
+-- Políticas Idempotentes
 drop policy if exists "Users can view own profile" on profiles;
 create policy "Users can view own profile" on profiles for select using (auth.uid() = id);
 
@@ -101,6 +102,8 @@ create table if not exists public.life_contexts (
   matrix_x numeric,
   matrix_y numeric,
   matrix_label text,
+  analysis_summary text,
+  analysis_data jsonb,
   last_updated timestamp with time zone default timezone('utc'::text, now())
 );
 alter table public.life_contexts enable row level security;
@@ -114,12 +117,18 @@ create table if not exists public.year_compass (
   goal1_text text,
   goal1_indicator text,
   goal1_completed boolean default false,
+  goal1_status text,
+  goal1_last_month text,
   goal2_text text,
   goal2_indicator text,
   goal2_completed boolean default false,
+  goal2_status text,
+  goal2_last_month text,
   goal3_text text,
   goal3_indicator text,
   goal3_completed boolean default false,
+  goal3_status text,
+  goal3_last_month text,
   financial_target_income numeric,
   financial_deadline text,
   updated_at timestamp with time zone default timezone('utc'::text, now())
@@ -136,6 +145,7 @@ create table if not exists public.monthly_notes (
   month numeric not null,
   year numeric not null,
   content text,
+  images text[] default '{}',
   updated_at timestamp with time zone default timezone('utc'::text, now())
 );
 alter table public.monthly_notes enable row level security;
@@ -217,7 +227,7 @@ create trigger on_auth_user_created
             <div className="flex items-center justify-between mb-3">
                <h3 className="text-lg font-bold text-emerald-400 flex items-center gap-2">
                   <Sword className="w-5 h-5" />
-                  Migração v5.5 (Anotações Mensais)
+                  Migração v5.8 (Status de Metas)
                </h3>
                <button 
                   onClick={handleCopyMigration}
@@ -228,7 +238,7 @@ create trigger on_auth_user_created
                </button>
             </div>
             <p className="text-sm text-slate-300 mb-3">
-               Adicione a tabela de reflexões mensais.
+               Execute este script no SQL Editor para habilitar o rastreamento ativo de progresso na Bússola Anual.
             </p>
             <div className="bg-black/50 p-4 rounded-lg border border-slate-800 overflow-x-auto">
                <pre className="text-xs font-mono text-emerald-300 leading-relaxed">
@@ -242,28 +252,20 @@ create trigger on_auth_user_created
       <section className="bg-slate-900 border border-slate-800 rounded-xl p-6">
          <h3 className="text-lg font-bold text-slate-200 flex items-center gap-2 mb-3">
             <Wallet className="w-5 h-5" />
-            Novidades da Versão 5.5
+            Novidades da Versão 5.8
          </h3>
          <ul className="space-y-2 text-sm text-slate-400">
             <li className="flex items-start gap-2">
                <span className="text-emerald-500 font-bold">•</span>
-               <span><strong>Reflexões Mensais:</strong> Um diário tático integrado ao dashboard para você documentar seus progressos mês a mês.</span>
+               <span><strong>Bússola Ativa:</strong> Agora você pode registrar o status atual de cada meta e o mês de referência, transformando desejos em métricas vivas.</span>
             </li>
             <li className="flex items-start gap-2">
                <span className="text-emerald-500 font-bold">•</span>
-               <span><strong>Patrimônio Inteligente 2.0:</strong> O Inventário agora ordena automaticamente seus ativos por valor, destacando o que realmente importa.</span>
+               <span><strong>Galeria Separada:</strong> As fotos das reflexões mensais ficam organizadas em uma grade dedicada abaixo do texto.</span>
             </li>
             <li className="flex items-start gap-2">
                <span className="text-emerald-500 font-bold">•</span>
-               <span><strong>Selo Keeper (Estrela):</strong> A IA identifica e marca com uma estrela dourada os ativos que estão se valorizando ou protegendo seu capital contra a inflação.</span>
-            </li>
-             <li className="flex items-start gap-2">
-               <span className="text-emerald-500 font-bold">•</span>
-               <span><strong>Comparativo Histórico:</strong> Nova visualização que compara o Preço de Compra vs. Valor Atual estimado, revelando instantaneamente o ganho ou perda real de capital.</span>
-            </li>
-            <li className="flex items-start gap-2">
-               <span className="text-emerald-500 font-bold">•</span>
-               <span><strong>Sincronização em Nuvem:</strong> Seus dados de THL, Metas e Contexto agora persistem em nuvem criptografada (Supabase).</span>
+               <span><strong>Diagnóstico Persistente:</strong> A análise completa da IA é salva automaticamente no banco de dados.</span>
             </li>
          </ul>
       </section>

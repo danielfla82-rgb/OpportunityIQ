@@ -46,6 +46,7 @@ export interface MonthlyNote {
   month: number; // 1-12
   year: number;
   content: string;
+  images?: string[]; // Array of Base64 strings
   updatedAt: string;
 }
 
@@ -137,10 +138,18 @@ export interface ContextAnalysisResult {
   matrixCoordinates?: AnalysisCoordinates;
 }
 
+export interface GoalData {
+  text: string;
+  indicator: string;
+  completed: boolean;
+  status?: string; // New: Current progress description
+  lastUpdateMonth?: string; // New: e.g. "Fevereiro"
+}
+
 export interface YearlyCompassData {
-  goal1: { text: string; indicator: string; completed: boolean };
-  goal2: { text: string; indicator: string; completed: boolean };
-  goal3: { text: string; indicator: string; completed: boolean };
+  goal1: GoalData;
+  goal2: GoalData;
+  goal3: GoalData;
   financialGoal: {
     targetMonthlyIncome: number;
     targetTHL: number;

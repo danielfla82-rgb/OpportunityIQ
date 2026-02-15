@@ -89,13 +89,13 @@ async function smartRunner(params: RunnerParams) {
       const errorMsg = error.message || JSON.stringify(error);
 
       // Segurança: Se a chave for vazada ou bloqueada (403), pare imediatamente.
-      // Não adianta tentar outros modelos se a chave é inválida.
-      if (errorMsg.includes('403') || errorMsg.includes('API key not valid') || errorMsg.includes('400')) {
+      // Erro 400 pode ser "Model not found", então permitimos fallback.
+      if (errorMsg.includes('403') || errorMsg.includes('API key not valid') || errorMsg.includes('API_KEY_INVALID')) {
         console.error("SECURITY ALERT: API Key Rejected/Leaked/Invalid.");
         throw new Error("SECURITY_BLOCK_403");
       }
 
-      // Se for rate limit (429) ou erro de modelo (404/500), continua para o próximo modelo
+      // Se for rate limit (429) ou erro de modelo (404/500/400), continua para o próximo modelo
       console.warn(`SmartRunner: Modelo ${modelName} falhou (${errorMsg}). Tentando fallback...`);
       continue; 
     }
