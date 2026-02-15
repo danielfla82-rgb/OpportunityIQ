@@ -104,6 +104,8 @@ const MonthlyReflections: React.FC<Props> = ({ notes, onSave }) => {
   // --- EDITOR COMMANDS ---
   const execCommand = (command: string, value: string | undefined = undefined) => {
     document.execCommand(command, false, value);
+    // Note: We use onMouseDown + preventDefault on buttons to avoid losing focus, 
+    // so we don't necessarily need to refocus manually, but it's safe to keep.
     editorRef.current?.focus();
   };
 
@@ -279,16 +281,34 @@ const MonthlyReflections: React.FC<Props> = ({ notes, onSave }) => {
                {/* 2. Toolbar */}
                <div className="flex flex-wrap items-center gap-2 px-4 py-3 bg-slate-900 border-b border-slate-800 shrink-0">
                   <div className="flex items-center gap-1 pr-4 border-r border-slate-700 mr-2">
-                     <button onClick={() => execCommand('bold')} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded transition-colors" title="Negrito"><Bold className="w-4 h-4" /></button>
-                     <button onClick={() => execCommand('italic')} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded transition-colors" title="Itálico"><Italic className="w-4 h-4" /></button>
-                     <button onClick={() => execCommand('insertUnorderedList')} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded transition-colors" title="Lista"><List className="w-4 h-4" /></button>
+                     <button 
+                        onMouseDown={(e) => { e.preventDefault(); execCommand('bold'); }} 
+                        className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded transition-colors" 
+                        title="Negrito"
+                     >
+                        <Bold className="w-4 h-4" />
+                     </button>
+                     <button 
+                        onMouseDown={(e) => { e.preventDefault(); execCommand('italic'); }} 
+                        className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded transition-colors" 
+                        title="Itálico"
+                     >
+                        <Italic className="w-4 h-4" />
+                     </button>
+                     <button 
+                        onMouseDown={(e) => { e.preventDefault(); execCommand('insertUnorderedList'); }} 
+                        className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded transition-colors" 
+                        title="Lista"
+                     >
+                        <List className="w-4 h-4" />
+                     </button>
                   </div>
                   
                   <div className="flex items-center gap-1 pr-4 border-r border-slate-700 mr-2">
                      {TEXT_COLORS.map((c) => (
                         <button 
                            key={c.color}
-                           onClick={() => execCommand('foreColor', c.color)}
+                           onMouseDown={(e) => { e.preventDefault(); execCommand('foreColor', c.color); }}
                            className="w-5 h-5 rounded-full border border-slate-600 hover:scale-110 transition-transform"
                            style={{ backgroundColor: c.color }}
                            title={`Cor: ${c.label}`}
@@ -304,7 +324,8 @@ const MonthlyReflections: React.FC<Props> = ({ notes, onSave }) => {
                    <div 
                       ref={editorRef}
                       contentEditable
-                      className="w-full max-w-5xl mx-auto p-8 md:p-12 text-slate-200 text-lg leading-relaxed outline-none prose prose-invert prose-p:my-2 prose-headings:text-indigo-300 prose-ul:list-disc prose-ul:pl-5 min-h-[300px]"
+                      // Added specific tailwind overrides for lists to ensure they display correctly
+                      className="w-full max-w-5xl mx-auto p-8 md:p-12 text-slate-200 text-lg leading-relaxed outline-none prose prose-invert prose-p:my-2 prose-headings:text-indigo-300 prose-ul:list-disc prose-ul:pl-5 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 min-h-[300px]"
                       suppressContentEditableWarning={true}
                       onInput={(e) => setCurrentContent(e.currentTarget.innerHTML)}
                       style={{ fontFamily: 'Inter, sans-serif' }}
@@ -407,3 +428,4 @@ const MonthlyReflections: React.FC<Props> = ({ notes, onSave }) => {
 };
 
 export default MonthlyReflections;
+    
