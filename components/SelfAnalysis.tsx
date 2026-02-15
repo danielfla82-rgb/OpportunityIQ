@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { SelfAnalysisData, AnalysisBlock } from '../types';
 import { generateJungianSynthesis } from '../services/geminiService';
-import { Ghost, User, Activity, Compass, Sparkles, Loader2, Save, Fingerprint, Plus, Trash2, Edit2 } from 'lucide-react';
+import { Ghost, User, Activity, Compass, Sparkles, Loader2, Save, Fingerprint, Plus, Trash2, Edit2, ChevronDown, ChevronUp, MessageSquare } from 'lucide-react';
 
 interface Props {
   data: SelfAnalysisData | null;
@@ -29,6 +29,9 @@ const SelfAnalysis: React.FC<Props> = ({ data, onSave }) => {
   });
   const [loading, setLoading] = useState(false);
   const [activeSection, setActiveSection] = useState<'shadow' | 'persona' | 'complexes' | 'self' | 'synthesis'>('shadow');
+  
+  // Track which accordion item is open. Default to the first item of the active section.
+  const [expandedBlockId, setExpandedBlockId] = useState<string | null>(null);
 
   // Load initial data
   useEffect(() => {
@@ -37,6 +40,14 @@ const SelfAnalysis: React.FC<Props> = ({ data, onSave }) => {
       if (data.synthesis) setActiveSection('synthesis');
     }
   }, [data]);
+
+  // Set default expanded item when section changes
+  useEffect(() => {
+      const currentBlocks = formData[activeSection as keyof SelfAnalysisData];
+      if (Array.isArray(currentBlocks) && currentBlocks.length > 0 && activeSection !== 'synthesis') {
+          setExpandedBlockId(currentBlocks[0].id);
+      }
+  }, [activeSection]);
 
   const handleGenerate = async () => {
     setLoading(true);
@@ -65,16 +76,20 @@ const SelfAnalysis: React.FC<Props> = ({ data, onSave }) => {
   };
 
   const addBlock = (section: keyof SelfAnalysisData) => {
+      const newId = generateUUID();
       setFormData(prev => {
           const blocks = prev[section] as AnalysisBlock[];
           return {
               ...prev,
-              [section]: [...blocks, { id: generateUUID(), question: 'Nova Pergunta...', answer: '' }]
+              [section]: [...blocks, { id: newId, question: 'Escreva sua nova pergunta aqui...', answer: '' }]
           };
       });
+      // Auto expand the new block
+      setExpandedBlockId(newId);
   };
 
-  const removeBlock = (section: keyof SelfAnalysisData, id: string) => {
+  const removeBlock = (section: keyof SelfAnalysisData, id: string, e: React.MouseEvent) => {
+      e.stopPropagation(); // Prevent accordion toggle
       setFormData(prev => {
           const blocks = prev[section] as AnalysisBlock[];
           if (blocks.length <= 1) return prev; // Keep at least one
@@ -83,6 +98,10 @@ const SelfAnalysis: React.FC<Props> = ({ data, onSave }) => {
               [section]: blocks.filter(b => b.id !== id)
           };
       });
+  };
+
+  const toggleAccordion = (id: string) => {
+      setExpandedBlockId(prev => prev === id ? null : id);
   };
 
   const sections = [
@@ -200,39 +219,78 @@ const SelfAnalysis: React.FC<Props> = ({ data, onSave }) => {
                       </div>
                    </div>
 
-                   <div className="flex-1 overflow-y-auto space-y-6 custom-scrollbar pr-2 relative z-10">
-                       {(formData[section.id as keyof SelfAnalysisData] as AnalysisBlock[]).map((block, index) => (
-                           <div key={block.id} className="bg-slate-950/50 border border-slate-800 rounded-xl p-4 transition-all hover:border-slate-700 group">
-                               <div className="flex items-start gap-3 mb-3">
-                                   <div className="flex-1">
-                                       <label className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-1 block flex items-center gap-2">
-                                           Pergunta {index + 1} <Edit2 className="w-3 h-3 opacity-30" />
-                                       </label>
-                                       <input 
-                                           className="w-full bg-transparent border-b border-transparent hover:border-slate-700 focus:border-indigo-500 text-sm text-indigo-300 font-medium placeholder-slate-600 outline-none py-1 transition-colors"
-                                           value={block.question}
-                                           onChange={(e) => updateBlock(section.id as keyof SelfAnalysisData, block.id, 'question', e.target.value)}
-                                           placeholder="Digite sua pergunta aqui..."
-                                       />
+                   <div className="flex-1 overflow-y-auto space-y-4 custom-scrollbar pr-2 relative z-10 pb-4">
+                       {(formData[section.id as keyof SelfAnalysisData] as AnalysisBlock[]).map((block, index) => {
+                           const isExpanded = expandedBlockId === block.id;
+                           return (
+                               <div 
+                                   key={block.id} 
+                                   className={`border rounded-xl transition-all duration-300 overflow-hidden ${isExpanded ? 'bg-slate-950 border-slate-700 shadow-xl' : 'bg-slate-900/40 border-slate-800 hover:border-slate-700'}`}
+                               >
+                                   {/* Accordion Header */}
+                                   <div 
+                                       className="flex items-center justify-between p-4 cursor-pointer select-none"
+                                       onClick={() => toggleAccordion(block.id)}
+                                   >
+                                       <div className="flex items-center gap-3 overflow-hidden">
+                                           <div className={`text-xs font-bold uppercase tracking-wider ${isExpanded ? section.color : 'text-slate-500'}`}>
+                                               #{index + 1}
+                                           </div>
+                                           <div className={`text-sm truncate font-medium ${isExpanded ? 'text-white' : 'text-slate-400'}`}>
+                                               {block.question || "Nova Pergunta..."}
+                                           </div>
+                                       </div>
+                                       <div className="flex items-center gap-2 shrink-0">
+                                           {(formData[section.id as keyof SelfAnalysisData] as AnalysisBlock[]).length > 1 && (
+                                               <button 
+                                                   onClick={(e) => removeBlock(section.id as keyof SelfAnalysisData, block.id, e)}
+                                                   className="p-1.5 text-slate-600 hover:text-red-400 hover:bg-red-950/30 rounded transition-colors"
+                                                   title="Remover"
+                                               >
+                                                   <Trash2 className="w-4 h-4" />
+                                               </button>
+                                           )}
+                                           <div className={`transform transition-transform ${isExpanded ? 'rotate-180 text-white' : 'text-slate-600'}`}>
+                                               <ChevronDown className="w-4 h-4" />
+                                           </div>
+                                       </div>
                                    </div>
-                                   {(formData[section.id as keyof SelfAnalysisData] as AnalysisBlock[]).length > 1 && (
-                                       <button 
-                                           onClick={() => removeBlock(section.id as keyof SelfAnalysisData, block.id)}
-                                           className="p-2 text-slate-600 hover:text-red-400 hover:bg-red-950/30 rounded transition-colors"
-                                           title="Remover Pergunta"
-                                       >
-                                           <Trash2 className="w-4 h-4" />
-                                       </button>
+
+                                   {/* Accordion Body */}
+                                   {isExpanded && (
+                                       <div className="p-4 pt-0 border-t border-slate-800/50 bg-slate-900/20 animate-fade-in">
+                                           <div className="space-y-4 pt-4">
+                                               {/* Question Input - Using Textarea to prevent clipping */}
+                                               <div>
+                                                   <label className="text-[10px] text-indigo-300 uppercase tracking-widest font-bold mb-2 flex items-center gap-1">
+                                                       <Edit2 className="w-3 h-3" /> A Pergunta
+                                                   </label>
+                                                   <textarea 
+                                                       className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-slate-200 text-sm leading-relaxed focus:ring-1 focus:ring-white/20 outline-none resize-none transition-all placeholder:text-slate-600 min-h-[60px]"
+                                                       value={block.question}
+                                                       onChange={(e) => updateBlock(section.id as keyof SelfAnalysisData, block.id, 'question', e.target.value)}
+                                                       placeholder="Digite sua pergunta aqui..."
+                                                   />
+                                               </div>
+
+                                               {/* Answer Input */}
+                                               <div>
+                                                   <label className="text-[10px] text-emerald-400 uppercase tracking-widest font-bold mb-2 flex items-center gap-1">
+                                                       <MessageSquare className="w-3 h-3" /> Sua Reflexão
+                                                   </label>
+                                                   <textarea 
+                                                      className="w-full bg-slate-900 border border-slate-700 rounded-lg p-4 text-slate-200 text-base leading-relaxed focus:ring-1 focus:ring-white/20 outline-none resize-none transition-all placeholder:text-slate-600 min-h-[150px]"
+                                                      placeholder="Descreva profundamente sua resposta..."
+                                                      value={block.answer}
+                                                      onChange={(e) => updateBlock(section.id as keyof SelfAnalysisData, block.id, 'answer', e.target.value)}
+                                                   />
+                                               </div>
+                                           </div>
+                                       </div>
                                    )}
                                </div>
-                               <textarea 
-                                  className="w-full bg-slate-900 border border-slate-700 rounded-lg p-4 text-slate-200 text-base leading-relaxed focus:ring-1 focus:ring-white/20 outline-none resize-none transition-all placeholder:text-slate-700 min-h-[120px]"
-                                  placeholder="Sua resposta..."
-                                  value={block.answer}
-                                  onChange={(e) => updateBlock(section.id as keyof SelfAnalysisData, block.id, 'answer', e.target.value)}
-                               />
-                           </div>
-                       ))}
+                           );
+                       })}
                        
                        <button 
                            onClick={() => addBlock(section.id as keyof SelfAnalysisData)}
@@ -242,7 +300,7 @@ const SelfAnalysis: React.FC<Props> = ({ data, onSave }) => {
                        </button>
                    </div>
 
-                   <div className="flex justify-end mt-6 relative z-10 pt-4 border-t border-slate-800/50">
+                   <div className="flex justify-end mt-4 relative z-10 pt-4 border-t border-slate-800/50">
                       <button 
                         onClick={handleSaveDraft}
                         className="px-6 py-3 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors flex items-center gap-2 text-sm font-medium"
