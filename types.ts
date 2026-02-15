@@ -41,12 +41,29 @@ export interface AssetItem {
   };
 }
 
+export interface MonthlyMetrics {
+  energyPhysical: number;      // 0-10
+  mentalClarity: number;       // 0-10
+  jobPerformance: number;      // 0-10
+  studyConsistency: number;    // 0-10
+  studyQuality: number;        // 0-10
+  sleepQuality: number;        // 0-10
+}
+
+export interface MonthlyTags {
+  context: string[];   // Fatores Externos
+  sentiment: string[]; // Estado Interno
+  macro: string[];     // Resultado Macro
+}
+
 export interface MonthlyNote {
   id?: string;
   month: number; // 1-12
   year: number;
   content: string;
   images?: string[]; // Array of Base64 strings
+  metrics?: MonthlyMetrics;
+  tags?: MonthlyTags;
   updatedAt: string;
 }
 

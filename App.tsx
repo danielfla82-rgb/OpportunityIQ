@@ -264,7 +264,7 @@ const App: React.FC = () => {
       const { error } = await dataService.saveNote(session.user.id, note);
       if (error) {
         console.error("Save failed:", error);
-        alert("Erro ao salvar nota na nuvem. Verifique se o comando SQL de migração 'images' foi executado no Supabase.");
+        alert("Erro ao salvar nota na nuvem. Verifique na 'Wiki do Operador' se você rodou o SQL de Migração (v5.9).");
       }
     }
   };
@@ -294,7 +294,7 @@ const App: React.FC = () => {
         { id: AppView.DASHBOARD, label: 'Comando Central', icon: LayoutDashboard },
         { id: AppView.THL_CALCULATOR, label: 'Calculadora THL', icon: Calculator },
         { id: AppView.YEARLY_GOALS, label: 'Bússola Anual', icon: Compass },
-        { id: AppView.MONTHLY_REFLECTIONS, label: 'Anotações (Meses)', icon: Calendar },
+        { id: AppView.MONTHLY_REFLECTIONS, label: 'Diário Mensal', icon: Calendar },
         { id: AppView.LIFE_CONTEXT, label: 'Mapear Vida', icon: BookUser },
         { id: AppView.DIAGNOSIS, label: 'Diagnóstico', icon: FileText, hidden: !analysisResult },
         { id: AppView.CHAT, label: 'Chat Especialista', icon: MessageSquare },

@@ -1,11 +1,11 @@
-
 import React, { useState, useEffect, useRef } from 'react';
-import { MonthlyNote } from '../types';
+import { MonthlyNote, MonthlyMetrics, MonthlyTags } from '../types';
 import { 
   Calendar, Save, CheckCircle2, PenLine, ChevronLeft, ChevronRight, 
   Edit3, Bold, Italic, List, Image as ImageIcon, Download, Palette, 
-  Maximize2, X, Trash2, Plus
+  Maximize2, X, Trash2, Plus, BarChart2, Tag, Wand2, ChevronDown
 } from 'lucide-react';
+import { Tooltip } from 'react-tooltip';
 
 interface Props {
   notes: MonthlyNote[];
@@ -36,11 +36,164 @@ const TEXT_COLORS = [
   { color: '#f87171', label: 'Vermelho' } // Red-400
 ];
 
+// --- EXPANDED CONSTANTS FOR STRUCTURED DATA ---
+
+const TAG_OPTIONS = {
+  context: [
+    "Rotina Estável", "Viagem Trabalho", "Férias", "Mudança de Casa", 
+    "Crise Familiar", "Término Relacionamento", "Doença/Lesão", 
+    "Prazo Agressivo", "Promoção", "Demissão", "Dívida Inesperada",
+    "Novo Hobby", "Networking Intenso", "Estudo Pesado"
+  ],
+  sentiment: [
+    "Focado (Flow)", "Confiante", "Grato", "Resiliente", "Empolgado",
+    "Disperso (Brain Fog)", "Ansioso", "Exausto", "Frustrado", "Solitário", "Indiferente"
+  ],
+  macro: [
+    "Grande Avanço", "Produtivo", "Manutenção", 
+    "Estagnado", "Caos Total", "Regressão", "Recuperação"
+  ]
+};
+
+// Logic for Auto-NPS based on tags
+// Key: Tag String, Value: Partial<MonthlyMetrics> modifiers (positive or negative)
+const TAG_IMPACTS: Record<string, Partial<MonthlyMetrics>> = {
+  "Doença/Lesão": { energyPhysical: 2, sleepQuality: 4, jobPerformance: 4 },
+  "Viagem Trabalho": { energyPhysical: 5, sleepQuality: 5, studyConsistency: 3 },
+  "Prazo Agressivo": { jobPerformance: 9, mentalClarity: 6, sleepQuality: 4, energyPhysical: 4 },
+  "Férias": { energyPhysical: 9, mentalClarity: 9, jobPerformance: 0, studyConsistency: 2 },
+  "Estudo Pesado": { studyConsistency: 10, studyQuality: 8, mentalClarity: 7 },
+  "Focado (Flow)": { mentalClarity: 10, jobPerformance: 9, studyQuality: 10 },
+  "Disperso (Brain Fog)": { mentalClarity: 2, studyQuality: 3, jobPerformance: 4 },
+  "Exausto": { energyPhysical: 2, mentalClarity: 3, sleepQuality: 3 },
+  "Ansioso": { sleepQuality: 3, mentalClarity: 4 },
+  "Confiante": { jobPerformance: 8, mentalClarity: 8 },
+  "Grande Avanço": { jobPerformance: 10, studyQuality: 10 },
+  "Caos Total": { mentalClarity: 2, sleepQuality: 2, studyConsistency: 1 }
+};
+
+const METRIC_LABELS: Record<keyof MonthlyMetrics, { label: string, tooltips: string[] }> = {
+  energyPhysical: { 
+    label: "Energia Física", 
+    tooltips: ["0-3: Sedentário/Doente", "4-7: Cansaço Moderado", "8-10: Alta Performance"]
+  },
+  mentalClarity: { 
+    label: "Clareza Mental", 
+    tooltips: ["0-3: Brain Fog Intenso", "4-7: Foco Oscilante", "8-10: Deep Work"]
+  },
+  jobPerformance: { 
+    label: "Performance Trabalho", 
+    tooltips: ["0-4: Risco (PIP)", "5-7: Entrega Padrão", "8-10: Promoção/Destaque"]
+  },
+  studyConsistency: { 
+    label: "Constância Estudos", 
+    tooltips: ["Adesão ao plano (Hábito)"]
+  },
+  studyQuality: { 
+    label: "Qualidade Estudo", 
+    tooltips: ["Retenção e Eficiência"]
+  },
+  sleepQuality: { 
+    label: "Qualidade do Sono", 
+    tooltips: ["A base de tudo"]
+  }
+};
+
+// --- HELPER COMPONENTS ---
+
+const MetricSlider: React.FC<{ id: keyof MonthlyMetrics, value: number, onChange: (v: number) => void }> = ({ id, value, onChange }) => {
+  const info = METRIC_LABELS[id];
+  
+  const getColor = (v: number) => {
+    if (v <= 3) return 'accent-red-500';
+    if (v <= 7) return 'accent-yellow-500';
+    return 'accent-emerald-500';
+  };
+
+  const getTextColor = (v: number) => {
+    if (v <= 3) return 'text-red-400';
+    if (v <= 7) return 'text-yellow-400';
+    return 'text-emerald-400';
+  };
+
+  return (
+    <div className="flex flex-col gap-1 mb-3 group">
+      <div className="flex justify-between items-end">
+        <label className="text-[10px] uppercase tracking-wider text-slate-500 font-bold flex items-center gap-1 cursor-help" title={info.tooltips.join('\n')}>
+          {info.label}
+        </label>
+        <span className={`text-sm font-mono font-bold ${getTextColor(value)}`}>{value}</span>
+      </div>
+      <input 
+        type="range" 
+        min="0" max="10" 
+        step="1" 
+        value={value} 
+        onChange={(e) => onChange(parseInt(e.target.value))}
+        className={`w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer ${getColor(value)} transition-all`}
+      />
+    </div>
+  );
+};
+
+const TagSelector = ({ label, options, selected, onSelect, onRemove }: { label: string, options: string[], selected: string[], onSelect: (t: string) => void, onRemove: (t: string) => void }) => (
+  <div className="mb-4">
+    <div className="flex items-center justify-between mb-2">
+        <label className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">{label}</label>
+        
+        {/* Dropdown Customizado */}
+        <div className="relative group">
+            <select 
+                className="appearance-none bg-slate-900 border border-slate-700 hover:border-emerald-500/50 text-slate-300 text-[10px] py-1 pl-2 pr-6 rounded cursor-pointer outline-none focus:ring-1 focus:ring-emerald-500 transition-colors uppercase font-bold tracking-wide"
+                onChange={(e) => {
+                    if (e.target.value) {
+                        onSelect(e.target.value);
+                        e.target.value = ""; // Reset selection
+                    }
+                }}
+                value=""
+            >
+                <option value="" disabled>+ Adicionar</option>
+                {options.filter(opt => !selected.includes(opt)).map(opt => (
+                    <option key={opt} value={opt} className="text-sm normal-case text-slate-900 bg-slate-200">
+                        {opt}
+                    </option>
+                ))}
+            </select>
+            <ChevronDown className="w-3 h-3 text-slate-500 absolute right-1.5 top-1.5 pointer-events-none group-hover:text-emerald-400" />
+        </div>
+    </div>
+
+    <div className="flex flex-wrap gap-2 min-h-[30px] bg-slate-950/30 p-2 rounded-lg border border-slate-800/50">
+      {selected.length === 0 && (
+          <span className="text-xs text-slate-600 italic">Nenhuma tag selecionada.</span>
+      )}
+      {selected.map(tag => (
+        <span 
+            key={tag} 
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium bg-indigo-900/30 border border-indigo-500/30 text-indigo-300 group transition-all hover:bg-indigo-900/50 hover:border-indigo-500/60"
+        >
+            {tag}
+            <button onClick={() => onRemove(tag)} className="hover:text-white transition-colors">
+                <X className="w-3 h-3" />
+            </button>
+        </span>
+      ))}
+    </div>
+  </div>
+);
+
 const MonthlyReflections: React.FC<Props> = ({ notes, onSave }) => {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
   const [currentContent, setCurrentContent] = useState("");
-  const [currentImages, setCurrentImages] = useState<string[]>([]); // New state for gallery
+  const [currentImages, setCurrentImages] = useState<string[]>([]);
+  const [currentMetrics, setCurrentMetrics] = useState<MonthlyMetrics>({
+    energyPhysical: 5, mentalClarity: 5, jobPerformance: 5, studyConsistency: 5, studyQuality: 5, sleepQuality: 5
+  });
+  const [currentTags, setCurrentTags] = useState<MonthlyTags>({
+    context: [], sentiment: [], macro: []
+  });
   const [isSaving, setIsSaving] = useState(false);
   const editorRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -52,20 +205,67 @@ const MonthlyReflections: React.FC<Props> = ({ notes, onSave }) => {
       
       setCurrentContent(note?.content || "");
       setCurrentImages(note?.images || []);
+      setCurrentMetrics(note?.metrics || {
+        energyPhysical: 5, mentalClarity: 5, jobPerformance: 5, studyConsistency: 5, studyQuality: 5, sleepQuality: 5
+      });
+      setCurrentTags(note?.tags || { context: [], sentiment: [], macro: [] });
       
-      // We need to set the innerHTML after render when opening modal
       if (editorRef.current) {
         editorRef.current.innerHTML = note?.content || "";
       }
     }
   }, [selectedMonth, selectedYear, notes]);
 
+  // --- AUTO CALCULATION LOGIC ---
+  const handleAutoSuggestMetrics = () => {
+    // 1. Start with neutral baseline
+    let newMetrics: MonthlyMetrics = {
+        energyPhysical: 5, mentalClarity: 5, jobPerformance: 5, 
+        studyConsistency: 5, studyQuality: 5, sleepQuality: 5
+    };
+
+    // 2. Collect all active tags
+    const allTags = [...currentTags.context, ...currentTags.sentiment, ...currentTags.macro];
+    
+    // 3. Apply impacts
+    let impactsApplied = 0;
+    
+    allTags.forEach(tag => {
+        const impact = TAG_IMPACTS[tag];
+        if (impact) {
+            impactsApplied++;
+            (Object.keys(impact) as Array<keyof MonthlyMetrics>).forEach(key => {
+                if (impact[key] !== undefined) {
+                    // Average the current value with the impact target to allow multiple tags to influence
+                    // e.g. If current is 5, and impact is 2 -> (5+2)/2 = 3.5 -> 4
+                    // But to make it stronger, let's just take the impact if it's the first one, or average if cumulative.
+                    // Simple approach: Use weighted average favoring the extreme.
+                    
+                    const target = impact[key]!;
+                    const current = newMetrics[key];
+                    
+                    // Logic: Move current halfway towards target
+                    newMetrics[key] = Math.round((current + target) / 2);
+                }
+            });
+        }
+    });
+
+    if (impactsApplied === 0) {
+        alert("Adicione tags como 'Doença', 'Focado' ou 'Férias' para que a IA possa sugerir notas.");
+        return;
+    }
+
+    // 4. Force specific overrides (e.g., if Férias, job is 0 or irrelevant, but maybe we keep neutral)
+    // Using the spread to update state
+    setCurrentMetrics(newMetrics);
+  };
+
   const handleSave = () => {
     if (selectedMonth === null) return;
     
     setIsSaving(true);
     
-    // Get content directly from the editable div to preserve HTML
     const contentToSave = editorRef.current?.innerHTML || "";
     
     const note: MonthlyNote = {
@@ -73,6 +273,8 @@ const MonthlyReflections: React.FC<Props> = ({ notes, onSave }) => {
       year: selectedYear,
       content: contentToSave,
       images: currentImages,
+      metrics: currentMetrics,
+      tags: currentTags,
       updatedAt: new Date().toISOString()
     };
     
@@ -104,8 +306,6 @@ const MonthlyReflections: React.FC<Props> = ({ notes, onSave }) => {
   // --- EDITOR COMMANDS ---
   const execCommand = (command: string, value: string | undefined = undefined) => {
     document.execCommand(command, false, value);
-    // Note: We use onMouseDown + preventDefault on buttons to avoid losing focus, 
-    // so we don't necessarily need to refocus manually, but it's safe to keep.
     editorRef.current?.focus();
   };
 
@@ -113,7 +313,7 @@ const MonthlyReflections: React.FC<Props> = ({ notes, onSave }) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 2 * 1024 * 1024) { // 2MB limit check
+    if (file.size > 2 * 1024 * 1024) { 
       alert("Imagem muito grande. Por favor use imagens abaixo de 2MB para não sobrecarregar o banco de dados.");
       return;
     }
@@ -121,12 +321,10 @@ const MonthlyReflections: React.FC<Props> = ({ notes, onSave }) => {
     const reader = new FileReader();
     reader.onload = (event) => {
       if (event.target?.result) {
-        // Add to Gallery State instead of inline
         setCurrentImages(prev => [...prev, event.target!.result as string]);
       }
     };
     reader.readAsDataURL(file);
-    // Reset input
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -138,7 +336,6 @@ const MonthlyReflections: React.FC<Props> = ({ notes, onSave }) => {
     const note = notes.find(n => n.month === monthNum && n.year === selectedYear);
     if (!note) return null;
     
-    // Return text content + image count
     const tmp = document.createElement("DIV");
     tmp.innerHTML = note.content;
     const text = tmp.textContent || tmp.innerText || "";
@@ -161,7 +358,7 @@ const MonthlyReflections: React.FC<Props> = ({ notes, onSave }) => {
              <div className="bg-emerald-900/30 p-2 rounded-lg border border-emerald-500/30">
                 <Calendar className="w-6 h-6 text-emerald-400" />
              </div>
-             <h2 className="text-3xl font-serif text-slate-100">Reflexões Mensais</h2>
+             <h2 className="text-3xl font-serif text-slate-100">Diário Mensal</h2>
            </div>
            <p className="text-slate-400 text-sm">
              Acompanhe seu progresso, dores e vitórias. O que não é medido não é gerenciado.
@@ -257,7 +454,7 @@ const MonthlyReflections: React.FC<Props> = ({ notes, onSave }) => {
       {/* EXPANDED EDITOR MODAL */}
       {selectedMonth !== null && (
          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-fade-in">
-            <div className="bg-[#020617] border border-slate-800 w-full max-w-6xl h-[90vh] rounded-2xl shadow-2xl flex flex-col animate-fade-in-up relative overflow-hidden">
+            <div className="bg-[#020617] border border-slate-800 w-full max-w-6xl h-[95vh] rounded-2xl shadow-2xl flex flex-col animate-fade-in-up relative overflow-hidden">
                
                {/* 1. Modal Header */}
                <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950 shrink-0">
@@ -278,7 +475,75 @@ const MonthlyReflections: React.FC<Props> = ({ notes, onSave }) => {
                   </button>
                </div>
 
-               {/* 2. Toolbar */}
+               {/* 2. Structured Data Section (New) */}
+               <div className="bg-slate-900 border-b border-slate-800 p-6 overflow-y-auto max-h-[350px] shrink-0 custom-scrollbar">
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                     
+                     {/* 2a. Metrics Sliders (Left Column - 4 cols) */}
+                     <div className="lg:col-span-4 border-r border-slate-800 pr-0 lg:pr-8">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-2 text-emerald-400">
+                                <BarChart2 className="w-4 h-4" />
+                                <h4 className="text-sm font-bold uppercase tracking-widest">Métricas (NPS)</h4>
+                            </div>
+                            <button 
+                                onClick={handleAutoSuggestMetrics}
+                                className="flex items-center gap-1.5 text-[10px] font-bold text-indigo-300 hover:text-white bg-indigo-900/30 hover:bg-indigo-600 border border-indigo-500/30 rounded-full px-2.5 py-1 transition-all group"
+                                title="Preencher automaticamente baseado nas tags selecionadas"
+                            >
+                                <Wand2 className="w-3 h-3 group-hover:rotate-12 transition-transform" /> Sugerir
+                            </button>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                           {(Object.keys(currentMetrics) as Array<keyof MonthlyMetrics>).map(key => (
+                              <MetricSlider 
+                                key={key} 
+                                id={key} 
+                                value={currentMetrics[key]} 
+                                onChange={(v) => setCurrentMetrics(prev => ({ ...prev, [key]: v }))} 
+                              />
+                           ))}
+                        </div>
+                     </div>
+
+                     {/* 2b. Context Tags (Right Column - 8 cols) */}
+                     <div className="lg:col-span-8">
+                        <div className="flex items-center gap-2 mb-6 text-indigo-400">
+                           <Tag className="w-4 h-4" />
+                           <h4 className="text-sm font-bold uppercase tracking-widest">Contexto & Sentimento</h4>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+                            <TagSelector 
+                              label="Fatores Externos" 
+                              options={TAG_OPTIONS.context} 
+                              selected={currentTags.context}
+                              onSelect={(t) => setCurrentTags(prev => ({ ...prev, context: [...prev.context, t] }))}
+                              onRemove={(t) => setCurrentTags(prev => ({ ...prev, context: prev.context.filter(i => i !== t) }))}
+                            />
+                            
+                            <TagSelector 
+                              label="Estado Interno" 
+                              options={TAG_OPTIONS.sentiment} 
+                              selected={currentTags.sentiment}
+                              onSelect={(t) => setCurrentTags(prev => ({ ...prev, sentiment: [...prev.sentiment, t] }))}
+                              onRemove={(t) => setCurrentTags(prev => ({ ...prev, sentiment: prev.sentiment.filter(i => i !== t) }))}
+                            />
+                            
+                            <TagSelector 
+                              label="Resultado Macro" 
+                              options={TAG_OPTIONS.macro} 
+                              selected={currentTags.macro}
+                              onSelect={(t) => setCurrentTags(prev => ({ ...prev, macro: [...prev.macro, t] }))}
+                              onRemove={(t) => setCurrentTags(prev => ({ ...prev, macro: prev.macro.filter(i => i !== t) }))}
+                            />
+                        </div>
+                     </div>
+                  </div>
+               </div>
+
+               {/* 3. Toolbar */}
                <div className="flex flex-wrap items-center gap-2 px-4 py-3 bg-slate-900 border-b border-slate-800 shrink-0">
                   <div className="flex items-center gap-1 pr-4 border-r border-slate-700 mr-2">
                      <button 
@@ -317,14 +582,13 @@ const MonthlyReflections: React.FC<Props> = ({ notes, onSave }) => {
                   </div>
                </div>
 
-               {/* 3. Main Content Area (Scrollable) */}
+               {/* 4. Main Content Area (Scrollable) */}
                <div className="flex-1 overflow-y-auto bg-slate-950 scroll-smooth">
                    
-                   {/* 3a. Text Editor */}
+                   {/* 4a. Text Editor */}
                    <div 
                       ref={editorRef}
                       contentEditable
-                      // Added specific tailwind overrides for lists to ensure they display correctly
                       className="w-full max-w-5xl mx-auto p-8 md:p-12 text-slate-200 text-lg leading-relaxed outline-none prose prose-invert prose-p:my-2 prose-headings:text-indigo-300 prose-ul:list-disc prose-ul:pl-5 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 min-h-[300px]"
                       suppressContentEditableWarning={true}
                       onInput={(e) => setCurrentContent(e.currentTarget.innerHTML)}
@@ -332,7 +596,7 @@ const MonthlyReflections: React.FC<Props> = ({ notes, onSave }) => {
                       data-placeholder="Comece a escrever aqui..."
                    />
 
-                   {/* 3b. Gallery Section */}
+                   {/* 4b. Gallery Section */}
                    <div className="border-t border-slate-800 bg-slate-900/30 py-8 px-8 md:px-12">
                       <div className="max-w-5xl mx-auto">
                           <div className="flex items-center justify-between mb-6">
@@ -363,8 +627,6 @@ const MonthlyReflections: React.FC<Props> = ({ notes, onSave }) => {
                                   {currentImages.map((img, idx) => (
                                       <div key={idx} className="group relative aspect-square bg-slate-900 rounded-xl overflow-hidden border border-slate-800 hover:border-indigo-500 transition-colors">
                                           <img src={img} alt={`Gallery ${idx}`} className="w-full h-full object-cover" />
-                                          
-                                          {/* Overlay */}
                                           <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                               <button 
                                                   onClick={() => removeImage(idx)}
@@ -384,18 +646,16 @@ const MonthlyReflections: React.FC<Props> = ({ notes, onSave }) => {
                               >
                                   <ImageIcon className="w-12 h-12 mb-3 opacity-50" />
                                   <p className="text-sm">Nenhuma foto adicionada ainda.</p>
-                                  <p className="text-xs opacity-70 mt-1">Clique para enviar memórias.</p>
                               </div>
                           )}
                       </div>
                    </div>
-
                </div>
 
-               {/* 4. Footer */}
+               {/* 5. Footer */}
                <div className="p-4 md:px-8 md:py-5 border-t border-slate-800 flex justify-between items-center bg-slate-900 shrink-0">
                   <div className="text-xs text-slate-500 hidden md:block">
-                     * Fotos são salvas no banco de dados.
+                     * Use a varinha mágica para autocompletar as métricas baseadas nas tags.
                   </div>
                   <div className="flex gap-4 w-full md:w-auto justify-end">
                      <button 
@@ -409,23 +669,15 @@ const MonthlyReflections: React.FC<Props> = ({ notes, onSave }) => {
                         disabled={isSaving}
                         className="px-8 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg shadow-lg shadow-emerald-600/20 flex items-center gap-2 transition-all disabled:opacity-50 transform hover:-translate-y-1"
                      >
-                        {isSaving ? (
-                           <>Salvando...</>
-                        ) : (
-                           <>
-                              <Save className="w-5 h-5" /> Salvar Reflexão
-                           </>
-                        )}
+                        {isSaving ? 'Salvando...' : <><Save className="w-5 h-5" /> Salvar Reflexão</>}
                      </button>
                   </div>
                </div>
             </div>
          </div>
       )}
-
     </div>
   );
 };
 
 export default MonthlyReflections;
-    

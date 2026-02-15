@@ -7,25 +7,15 @@ const Documentation: React.FC = () => {
   const [copiedMigration, setCopiedMigration] = useState(false);
 
   const migrationScript = `
--- Migração v5.8: Rastreamento de Progresso das Metas
--- Adiciona colunas para acompanhar o Status Atual e o Mês de Referência de cada Grande Pedra.
+-- Migração v5.9: Diário Mensal Completo (Imagens + Métricas + Tags)
+-- Execute este comando para garantir que o Diário Mensal suporte todos os novos recursos.
 
-ALTER TABLE public.year_compass 
-ADD COLUMN IF NOT EXISTS goal1_status text,
-ADD COLUMN IF NOT EXISTS goal1_last_month text,
-ADD COLUMN IF NOT EXISTS goal2_status text,
-ADD COLUMN IF NOT EXISTS goal2_last_month text,
-ADD COLUMN IF NOT EXISTS goal3_status text,
-ADD COLUMN IF NOT EXISTS goal3_last_month text;
-
--- (Anterior) Migração v5.7: Suporte a Galeria de Imagens
 ALTER TABLE public.monthly_notes 
-ADD COLUMN IF NOT EXISTS images text[] DEFAULT '{}';
+ADD COLUMN IF NOT EXISTS images text[] DEFAULT '{}',
+ADD COLUMN IF NOT EXISTS metrics jsonb DEFAULT '{}'::jsonb,
+ADD COLUMN IF NOT EXISTS tags jsonb DEFAULT '{}'::jsonb;
 
--- (Anterior) Migração v5.6: Persistência do Diagnóstico da IA
-ALTER TABLE public.life_contexts 
-ADD COLUMN IF NOT EXISTS analysis_summary text,
-ADD COLUMN IF NOT EXISTS analysis_data jsonb;
+-- Nota: Se você já rodou migrações anteriores, este comando é seguro (IF NOT EXISTS).
   `.trim();
 
   const sqlScript = `
@@ -146,6 +136,8 @@ create table if not exists public.monthly_notes (
   year numeric not null,
   content text,
   images text[] default '{}',
+  metrics jsonb default '{}',
+  tags jsonb default '{}',
   updated_at timestamp with time zone default timezone('utc'::text, now())
 );
 alter table public.monthly_notes enable row level security;
@@ -227,7 +219,7 @@ create trigger on_auth_user_created
             <div className="flex items-center justify-between mb-3">
                <h3 className="text-lg font-bold text-emerald-400 flex items-center gap-2">
                   <Sword className="w-5 h-5" />
-                  Migração v5.8 (Status de Metas)
+                  Migração v5.9 (Imagens, Tags, Métricas)
                </h3>
                <button 
                   onClick={handleCopyMigration}
@@ -238,7 +230,7 @@ create trigger on_auth_user_created
                </button>
             </div>
             <p className="text-sm text-slate-300 mb-3">
-               Execute este script no SQL Editor para habilitar o rastreamento ativo de progresso na Bússola Anual.
+               Execute este comando no SQL Editor para habilitar os recursos avançados do Diário Mensal.
             </p>
             <div className="bg-black/50 p-4 rounded-lg border border-slate-800 overflow-x-auto">
                <pre className="text-xs font-mono text-emerald-300 leading-relaxed">
@@ -252,20 +244,20 @@ create trigger on_auth_user_created
       <section className="bg-slate-900 border border-slate-800 rounded-xl p-6">
          <h3 className="text-lg font-bold text-slate-200 flex items-center gap-2 mb-3">
             <Wallet className="w-5 h-5" />
-            Novidades da Versão 5.8
+            Novidades da Versão 5.9
          </h3>
          <ul className="space-y-2 text-sm text-slate-400">
             <li className="flex items-start gap-2">
                <span className="text-emerald-500 font-bold">•</span>
-               <span><strong>Bússola Ativa:</strong> Agora você pode registrar o status atual de cada meta e o mês de referência, transformando desejos em métricas vivas.</span>
+               <span><strong>Reflexões Quantitativas:</strong> Sliders de 0 a 10 para medir Energia Física, Clareza Mental, Performance no Trabalho e mais.</span>
             </li>
             <li className="flex items-start gap-2">
                <span className="text-emerald-500 font-bold">•</span>
-               <span><strong>Galeria Separada:</strong> As fotos das reflexões mensais ficam organizadas em uma grade dedicada abaixo do texto.</span>
+               <span><strong>Tags de Contexto:</strong> Marcação rápida de fatores externos (Crise, Viagem, Prazos) e estado interno (Foco, Ansiedade).</span>
             </li>
             <li className="flex items-start gap-2">
                <span className="text-emerald-500 font-bold">•</span>
-               <span><strong>Diagnóstico Persistente:</strong> A análise completa da IA é salva automaticamente no banco de dados.</span>
+               <span><strong>Galeria Integrada:</strong> Upload de fotos para compor o diário visual.</span>
             </li>
          </ul>
       </section>

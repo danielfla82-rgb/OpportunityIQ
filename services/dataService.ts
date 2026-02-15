@@ -119,7 +119,7 @@ const MOCK_DATA: FullUserData = {
     financialGoal: { targetMonthlyIncome: 80000, targetTHL: 500, deadlineMonth: "Dezembro 2025" }
   },
   monthlyNotes: [
-    { month: 1, year: 2025, content: "Janeiro: Foco total em aumentar a THL. Cortei reuniões inúteis.", updatedAt: new Date().toISOString(), images: [] }
+    { month: 1, year: 2025, content: "Janeiro: Foco total em aumentar a THL. Cortei reuniões inúteis.", updatedAt: new Date().toISOString(), images: [], metrics: { energyPhysical: 8, mentalClarity: 7, jobPerformance: 9, studyConsistency: 6, studyQuality: 8, sleepQuality: 7 }, tags: { context: ['Prazo Agressivo'], sentiment: ['Focado'], macro: ['Produtivo'] } }
   ]
 };
 
@@ -195,7 +195,7 @@ export const dataService = {
       .eq('user_id', userId)
       .single();
 
-    // 6. Monthly Notes (NEW)
+    // 6. Monthly Notes (Updated for metrics/tags)
     const { data: notesData } = await supabase
       .from('monthly_notes')
       .select('*')
@@ -296,7 +296,9 @@ export const dataService = {
       month: n.month,
       year: n.year,
       content: n.content,
-      images: n.images || [], // Load images array
+      images: n.images || [], 
+      metrics: n.metrics || undefined,
+      tags: n.tags || undefined,
       updatedAt: n.updated_at
     }));
 
@@ -334,20 +336,20 @@ export const dataService = {
       goal1_text: data.goal1.text,
       goal1_indicator: data.goal1.indicator,
       goal1_completed: data.goal1.completed,
-      goal1_status: data.goal1.status, // NEW
-      goal1_last_month: data.goal1.lastUpdateMonth, // NEW
+      goal1_status: data.goal1.status, 
+      goal1_last_month: data.goal1.lastUpdateMonth, 
       
       goal2_text: data.goal2.text,
       goal2_indicator: data.goal2.indicator,
       goal2_completed: data.goal2.completed,
-      goal2_status: data.goal2.status, // NEW
-      goal2_last_month: data.goal2.lastUpdateMonth, // NEW
+      goal2_status: data.goal2.status,
+      goal2_last_month: data.goal2.lastUpdateMonth,
 
       goal3_text: data.goal3.text,
       goal3_indicator: data.goal3.indicator,
       goal3_completed: data.goal3.completed,
-      goal3_status: data.goal3.status, // NEW
-      goal3_last_month: data.goal3.lastUpdateMonth, // NEW
+      goal3_status: data.goal3.status,
+      goal3_last_month: data.goal3.lastUpdateMonth,
 
       financial_target_income: data.financialGoal.targetMonthlyIncome,
       financial_deadline: data.financialGoal.deadlineMonth,
@@ -393,7 +395,7 @@ export const dataService = {
   },
 
   /**
-   * Save a Monthly Note
+   * Save a Monthly Note with Metrics and Tags
    */
   saveNote: async (userId: string, note: MonthlyNote) => {
     if (!isSupabaseConfigured || isDemo(userId)) {
@@ -419,7 +421,9 @@ export const dataService = {
          .from('monthly_notes')
          .update({ 
              content: note.content, 
-             images: note.images, // Update images
+             images: note.images, 
+             metrics: note.metrics,
+             tags: note.tags,
              updated_at: new Date().toISOString() 
          })
          .eq('id', existing.id);
@@ -431,7 +435,9 @@ export const dataService = {
             month: note.month,
             year: note.year,
             content: note.content,
-            images: note.images, // Insert images
+            images: note.images, 
+            metrics: note.metrics,
+            tags: note.tags,
             updated_at: new Date().toISOString()
          });
     }
@@ -516,21 +522,18 @@ export const dataService = {
         if (!isDemo(userId)) {
             const current = getLocalData();
             const list = current.assets || [];
-            // Replace existing item
             const newList = list.map((i: AssetItem) => i.id === item.id ? item : i);
             saveLocalData({ assets: newList });
         }
         return { error: null };
     }
     
-    // We update all editable fields
     const { error } = await supabase.from('assets').update({
       name: item.name,
       description: item.description,
       purchase_year: item.purchaseYear,
       purchase_value: item.purchaseValue,
       category: item.category,
-      // We assume AI analysis is also updated in the object passed here
       current_value_est: item.aiAnalysis?.currentValueEstimated,
       appreciation_rate: item.aiAnalysis?.depreciationTrend,
       liabilities_text: item.aiAnalysis?.commentary
