@@ -1,21 +1,29 @@
 
 import React, { useState } from 'react';
-import { BookOpen, Calculator, Brain, Sword, Compass, MessageSquare, Lock, Wallet, Database, Copy, Check } from 'lucide-react';
+import { BookOpen, Calculator, Brain, Sword, Compass, MessageSquare, Lock, Wallet, Database, Copy, Check, Fingerprint } from 'lucide-react';
 
 const Documentation: React.FC = () => {
   const [copied, setCopied] = useState(false);
   const [copiedMigration, setCopiedMigration] = useState(false);
 
   const migrationScript = `
--- Migração v5.9: Diário Mensal Completo (Imagens + Métricas + Tags)
--- Execute este comando para garantir que o Diário Mensal suporte todos os novos recursos.
+-- Migração v6.0: Módulo de Autoanálise (Self Analysis)
+-- Adiciona a tabela para armazenar os 4 pilares Junguianos e a síntese da IA.
 
-ALTER TABLE public.monthly_notes 
-ADD COLUMN IF NOT EXISTS images text[] DEFAULT '{}',
-ADD COLUMN IF NOT EXISTS metrics jsonb DEFAULT '{}'::jsonb,
-ADD COLUMN IF NOT EXISTS tags jsonb DEFAULT '{}'::jsonb;
+create table if not exists public.self_analysis (
+  user_id uuid references auth.users not null primary key,
+  shadow_text text,
+  persona_text text,
+  complexes_text text,
+  self_text text,
+  ai_synthesis text,
+  updated_at timestamp with time zone default timezone('utc'::text, now())
+);
+alter table public.self_analysis enable row level security;
 
--- Nota: Se você já rodou migrações anteriores, este comando é seguro (IF NOT EXISTS).
+-- Política de Segurança (RLS)
+drop policy if exists "Users can all own self_analysis" on self_analysis;
+create policy "Users can all own self_analysis" on self_analysis for all using (auth.uid() = user_id);
   `.trim();
 
   const sqlScript = `
@@ -145,6 +153,21 @@ alter table public.monthly_notes enable row level security;
 drop policy if exists "Users can all own notes" on monthly_notes;
 create policy "Users can all own notes" on monthly_notes for all using (auth.uid() = user_id);
 
+-- 8. Autoanálise (Self Analysis)
+create table if not exists public.self_analysis (
+  user_id uuid references auth.users not null primary key,
+  shadow_text text,
+  persona_text text,
+  complexes_text text,
+  self_text text,
+  ai_synthesis text,
+  updated_at timestamp with time zone default timezone('utc'::text, now())
+);
+alter table public.self_analysis enable row level security;
+
+drop policy if exists "Users can all own self_analysis" on self_analysis;
+create policy "Users can all own self_analysis" on self_analysis for all using (auth.uid() = user_id);
+
 -- Gatilho para criar perfil automaticamente ao cadastrar usuário
 create or replace function public.handle_new_user() 
 returns trigger as $$
@@ -214,12 +237,12 @@ create trigger on_auth_user_created
             </div>
          </div>
 
-         {/* Migration Section (Added based on user request) */}
+         {/* Migration Section */}
          <div className="bg-emerald-950/20 border border-emerald-500/20 rounded-xl p-6">
             <div className="flex items-center justify-between mb-3">
                <h3 className="text-lg font-bold text-emerald-400 flex items-center gap-2">
-                  <Sword className="w-5 h-5" />
-                  Migração v5.9 (Imagens, Tags, Métricas)
+                  <Fingerprint className="w-5 h-5" />
+                  Migração v6.0 (Autoanálise Junguiana)
                </h3>
                <button 
                   onClick={handleCopyMigration}
@@ -230,7 +253,7 @@ create trigger on_auth_user_created
                </button>
             </div>
             <p className="text-sm text-slate-300 mb-3">
-               Execute este comando no SQL Editor para habilitar os recursos avançados do Diário Mensal.
+               Execute este comando no SQL Editor para habilitar o novo módulo de Autoanálise e persistência de dados.
             </p>
             <div className="bg-black/50 p-4 rounded-lg border border-slate-800 overflow-x-auto">
                <pre className="text-xs font-mono text-emerald-300 leading-relaxed">
@@ -244,20 +267,16 @@ create trigger on_auth_user_created
       <section className="bg-slate-900 border border-slate-800 rounded-xl p-6">
          <h3 className="text-lg font-bold text-slate-200 flex items-center gap-2 mb-3">
             <Wallet className="w-5 h-5" />
-            Novidades da Versão 5.9
+            Novidades da Versão 6.0
          </h3>
          <ul className="space-y-2 text-sm text-slate-400">
             <li className="flex items-start gap-2">
                <span className="text-emerald-500 font-bold">•</span>
-               <span><strong>Reflexões Quantitativas:</strong> Sliders de 0 a 10 para medir Energia Física, Clareza Mental, Performance no Trabalho e mais.</span>
+               <span><strong>Autoanálise Estrutural:</strong> Substituição do Chat por um módulo profundo de 4 pilares (Sombra, Persona, Complexos, Self).</span>
             </li>
             <li className="flex items-start gap-2">
                <span className="text-emerald-500 font-bold">•</span>
-               <span><strong>Tags de Contexto:</strong> Marcação rápida de fatores externos (Crise, Viagem, Prazos) e estado interno (Foco, Ansiedade).</span>
-            </li>
-            <li className="flex items-start gap-2">
-               <span className="text-emerald-500 font-bold">•</span>
-               <span><strong>Galeria Integrada:</strong> Upload de fotos para compor o diário visual.</span>
+               <span><strong>Persistência de Síntese:</strong> Suas análises psicológicas agora ficam salvas na nuvem para consulta posterior.</span>
             </li>
          </ul>
       </section>
@@ -332,10 +351,10 @@ create trigger on_auth_user_created
            </div>
            <div className="p-4 rounded-lg bg-slate-900 border border-slate-800">
               <div className="flex items-center gap-2 mb-2">
-                 <MessageSquare className="w-4 h-4 text-indigo-400" />
-                 <h4 className="font-bold text-white">Chat Especialista</h4>
+                 <Fingerprint className="w-4 h-4 text-indigo-400" />
+                 <h4 className="font-bold text-white">Autoanálise Junguiana</h4>
               </div>
-              <p className="text-xs text-slate-400">Uma IA com personalidade ajustada (Nietzsche + Pareto) que tem acesso à sua THL e Contexto de Vida para dar conselhos táticos, não genéricos.</p>
+              <p className="text-xs text-slate-400">Framework estruturado para identificar o que sua Sombra esconde e onde sua Persona sufoca seu Self verdadeiro.</p>
            </div>
            <div className="p-4 rounded-lg bg-slate-900 border border-slate-800">
               <h4 className="font-bold text-white mb-1">Corretor Hedônico</h4>

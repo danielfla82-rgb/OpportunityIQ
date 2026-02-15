@@ -198,6 +198,21 @@ export interface InactionAnalysis {
   callToAction: string;
 }
 
+export interface AnalysisBlock {
+  id: string;
+  question: string;
+  answer: string;
+}
+
+export interface SelfAnalysisData {
+  shadow: AnalysisBlock[];
+  persona: AnalysisBlock[];
+  complexes: AnalysisBlock[];
+  self: AnalysisBlock[];
+  synthesis: string;
+  lastUpdated?: string;
+}
+
 export enum AppView {
   DASHBOARD = 'DASHBOARD',
   THL_CALCULATOR = 'THL_CALCULATOR',
@@ -206,13 +221,13 @@ export enum AppView {
   DIAGNOSIS = 'DIAGNOSIS',
   YEARLY_GOALS = 'YEARLY_GOALS',
   MONTHLY_REFLECTIONS = 'MONTHLY_REFLECTIONS',
+  SELF_ANALYSIS = 'SELF_ANALYSIS', // New View
   DELEGATION = 'DELEGATION',
   PARETO = 'PARETO',
   RAZORS = 'RAZORS',
   ENERGY_AUDIT = 'ENERGY_AUDIT',
   LIFESTYLE_INFLATOR = 'LIFESTYLE_INFLATOR',
   DOCS = 'DOCS',
-  CHAT = 'CHAT',
   SETTINGS = 'SETTINGS'
 }
 

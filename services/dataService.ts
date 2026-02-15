@@ -1,6 +1,6 @@
 
 import { supabase, isSupabaseConfigured } from './supabaseClient';
-import { FinancialProfile, DelegationItem, LifeContext, YearlyCompassData, ContextAnalysisResult, AssetItem, MonthlyNote, STORAGE_KEY } from '../types';
+import { FinancialProfile, DelegationItem, LifeContext, YearlyCompassData, ContextAnalysisResult, AssetItem, MonthlyNote, SelfAnalysisData, STORAGE_KEY, AnalysisBlock } from '../types';
 
 export interface FullUserData {
   profile: FinancialProfile;
@@ -9,7 +9,8 @@ export interface FullUserData {
   lifeContext: LifeContext | null;
   analysisResult: ContextAnalysisResult | null;
   yearCompass: YearlyCompassData;
-  monthlyNotes: MonthlyNote[]; // NEW
+  monthlyNotes: MonthlyNote[];
+  selfAnalysis: SelfAnalysisData | null; // NEW
 }
 
 const DEFAULT_PROFILE: FinancialProfile = {
@@ -24,6 +25,24 @@ const DEFAULT_COMPASS: YearlyCompassData = {
   goal2: { text: "", indicator: "", completed: false, status: "", lastUpdateMonth: "" },
   goal3: { text: "", indicator: "", completed: false, status: "", lastUpdateMonth: "" },
   financialGoal: { targetMonthlyIncome: 0, targetTHL: 0, deadlineMonth: "" }
+};
+
+// Helper to parse potential JSON string or return default block
+const parseAnalysisBlock = (text: string | null, defaultQuestion: string): AnalysisBlock[] => {
+    if (!text) return [{ id: '1', question: defaultQuestion, answer: '' }];
+    try {
+        const parsed = JSON.parse(text);
+        if (Array.isArray(parsed)) return parsed;
+        return [{ id: '1', question: defaultQuestion, answer: text }];
+    } catch (e) {
+        // If it's old plain text
+        return [{ id: '1', question: defaultQuestion, answer: text }];
+    }
+};
+
+// Helper to safely stringify blocks
+const serializeAnalysisBlock = (blocks: AnalysisBlock[]): string => {
+    return JSON.stringify(blocks);
 };
 
 // --- MOCK DATA FOR DEMO MODE ---
@@ -69,21 +88,6 @@ const MOCK_DATA: FullUserData = {
         maintenanceCostMonthlyEstimate: 0,
         commentary: 'Excelente reserva de valor com alta liquidez e sem custo de manutenção. Um ativo "Estrela".'
       }
-    },
-    {
-      id: 'mock-a3',
-      name: 'MacBook Pro M3 Max',
-      description: 'Ferramenta de trabalho essencial.',
-      purchaseYear: 2024,
-      purchaseValue: 25000,
-      category: 'ELECTRONICS',
-      aiAnalysis: {
-        currentValueEstimated: 22000,
-        depreciationTrend: 'STABLE',
-        liquidityScore: 70,
-        maintenanceCostMonthlyEstimate: 0,
-        commentary: 'Ferramenta produtiva. Deprecia, mas gera alavancagem operacional (ROI positivo indireto).'
-      }
     }
   ],
   lifeContext: {
@@ -120,7 +124,23 @@ const MOCK_DATA: FullUserData = {
   },
   monthlyNotes: [
     { month: 1, year: 2025, content: "Janeiro: Foco total em aumentar a THL. Cortei reuniões inúteis.", updatedAt: new Date().toISOString(), images: [], metrics: { energyPhysical: 8, mentalClarity: 7, jobPerformance: 9, studyConsistency: 6, studyQuality: 8, sleepQuality: 7 }, tags: { context: ['Prazo Agressivo'], sentiment: ['Focado'], macro: ['Produtivo'] } }
-  ]
+  ],
+  selfAnalysis: {
+    shadow: [
+        { id: '1', question: 'O que você rejeita? O que você esconde dos outros? Onde você sente inveja ou julgamento excessivo?', answer: "Tenho inveja de quem consegue relaxar sem culpa. Sinto que se parar, tudo desmorona." }
+    ],
+    persona: [
+        { id: '1', question: 'Qual máscara você usa para ser aceito? Onde você finge ser quem não é para diminuir o atrito social?', answer: "O empreendedor de sucesso, sempre ocupado, sempre resolvendo problemas." }
+    ],
+    complexes: [
+        { id: '1', question: 'Onde você perde o controle? Quais gatilhos fazem você agir de forma irracional ou desproporcional?', answer: "Medo de escassez (origem na infância). Fico irritado quando perco dinheiro ou tempo." }
+    ],
+    self: [
+        { id: '1', question: 'Qual é o seu propósito real, despido de ego? O que permanece quando tudo mais desmorona?', answer: "Quero criar algo duradouro, não apenas ganhar dinheiro. Sinto um chamado para ensinar." }
+    ],
+    synthesis: "A Persona do 'Herói Produtivo' está sufocando o Self criativo. A Sombra carrega o desejo reprimido de descanso, manifestando-se como culpa. O Complexo de Escassez é o motor neurótico que impede a delegação.",
+    lastUpdated: new Date().toISOString()
+  }
 };
 
 // --- Local Storage Helpers (Fallback) ---
@@ -158,7 +178,8 @@ export const dataService = {
          lifeContext: data.lifeContext || null,
          analysisResult: data.analysisResult || null,
          yearCompass: data.yearCompass || DEFAULT_COMPASS,
-         monthlyNotes: data.monthlyNotes || []
+         monthlyNotes: data.monthlyNotes || [],
+         selfAnalysis: data.selfAnalysis || null
        };
     }
 
@@ -175,7 +196,7 @@ export const dataService = {
       .select('*')
       .eq('user_id', userId);
       
-    // 3. Assets (NEW)
+    // 3. Assets
     const { data: assetsData } = await supabase
       .from('assets')
       .select('*')
@@ -195,11 +216,18 @@ export const dataService = {
       .eq('user_id', userId)
       .single();
 
-    // 6. Monthly Notes (Updated for metrics/tags)
+    // 6. Monthly Notes
     const { data: notesData } = await supabase
       .from('monthly_notes')
       .select('*')
       .eq('user_id', userId);
+
+    // 7. Self Analysis (NEW)
+    const { data: selfAnalysisData } = await supabase
+      .from('self_analysis')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
 
     // Mapping Database to Types
     const profile: FinancialProfile = profileData ? {
@@ -213,7 +241,7 @@ export const dataService = {
       id: d.id,
       name: d.name,
       cost: Number(d.cost),
-      hours_saved: Number(d.hours_saved),
+      hoursSaved: Number(d.hours_saved),
       frequency: d.frequency,
       category: d.category,
       archetype: d.archetype
@@ -229,8 +257,8 @@ export const dataService = {
        aiAnalysis: a.current_value_est ? {
           currentValueEstimated: Number(a.current_value_est),
           depreciationTrend: a.appreciation_rate as any,
-          liquidityScore: 50, // Default if not saved individually
-          maintenanceCostMonthlyEstimate: 0, // Default if not saved
+          liquidityScore: 50,
+          maintenanceCostMonthlyEstimate: 0,
           commentary: a.liabilities_text
        } : undefined
     }));
@@ -302,7 +330,16 @@ export const dataService = {
       updatedAt: n.updated_at
     }));
 
-    return { profile, delegations, assets, lifeContext, analysisResult, yearCompass, monthlyNotes };
+    const selfAnalysis: SelfAnalysisData | null = selfAnalysisData ? {
+        shadow: parseAnalysisBlock(selfAnalysisData.shadow_text, 'O que você rejeita? O que você esconde dos outros?'),
+        persona: parseAnalysisBlock(selfAnalysisData.persona_text, 'Qual máscara você usa para ser aceito?'),
+        complexes: parseAnalysisBlock(selfAnalysisData.complexes_text, 'Onde você perde o controle?'),
+        self: parseAnalysisBlock(selfAnalysisData.self_text, 'Qual é o seu propósito real?'),
+        synthesis: selfAnalysisData.ai_synthesis,
+        lastUpdated: selfAnalysisData.updated_at
+    } : null;
+
+    return { profile, delegations, assets, lifeContext, analysisResult, yearCompass, monthlyNotes, selfAnalysis };
   },
 
   /**
@@ -441,6 +478,25 @@ export const dataService = {
             updated_at: new Date().toISOString()
          });
     }
+  },
+
+  /**
+   * Save Self Analysis (NEW) - Handles Serialization
+   */
+  saveSelfAnalysis: async (userId: string, data: SelfAnalysisData) => {
+    if (!isSupabaseConfigured || isDemo(userId)) {
+        if (!isDemo(userId)) saveLocalData({ selfAnalysis: data });
+        return { error: null };
+    }
+    return supabase.from('self_analysis').upsert({
+        user_id: userId,
+        shadow_text: serializeAnalysisBlock(data.shadow),
+        persona_text: serializeAnalysisBlock(data.persona),
+        complexes_text: serializeAnalysisBlock(data.complexes),
+        self_text: serializeAnalysisBlock(data.self),
+        ai_synthesis: data.synthesis,
+        updated_at: new Date().toISOString()
+    });
   },
 
   /**

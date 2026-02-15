@@ -17,7 +17,9 @@ import {
   SkillAnalysis,
   InactionAnalysis,
   CalculatedTHL,
-  YearlyCompassData
+  YearlyCompassData,
+  SelfAnalysisData,
+  AnalysisBlock
 } from "../types";
 
 // --- CLIENT FACTORY ---
@@ -148,6 +150,48 @@ const cleanAndParseJSON = (text: string | undefined): any => {
 
 // --- SERVICES IMPL ---
 
+const formatBlocks = (blocks: AnalysisBlock[]): string => {
+    return blocks.map(b => `P: "${b.question}"\nR: "${b.answer}"`).join('\n\n');
+};
+
+export const generateJungianSynthesis = async (data: SelfAnalysisData): Promise<string> => {
+  try {
+    const shadowContent = formatBlocks(data.shadow);
+    const personaContent = formatBlocks(data.persona);
+    const complexesContent = formatBlocks(data.complexes);
+    const selfContent = formatBlocks(data.self);
+
+    const text = await smartRunner({
+      contents: `
+        Atue como Carl Jung. Analise profundamente estas reflexões de autoanálise:
+        
+        1. SOMBRA (O que é rejeitado/oculto):
+        ${shadowContent}
+
+        2. PERSONA (A máscara social):
+        ${personaContent}
+
+        3. COMPLEXOS (Minas terrestres emocionais/Gatilhos):
+        ${complexesContent}
+
+        4. SELF (A bússola central/Propósito):
+        ${selfContent}
+
+        Forneça uma SÍNTESE PROFUNDA conectando esses pontos. 
+        Onde a Persona está sufocando o Self? 
+        Como a Sombra está sabotando os Complexos?
+        Termine com 3 recomendações práticas e ritualísticas para individuação.
+        Use tom sério, analítico e um pouco místico.
+        Use Markdown para formatar (Negrito, Itálico, Listas).
+      `,
+      isJson: false
+    });
+    return text;
+  } catch (e) {
+    return "O inconsciente está turvo no momento. A IA não conseguiu processar a síntese. Tente novamente mais tarde.";
+  }
+};
+
 export const analyzeAsset = async (name: string, description: string, value: number, year: number): Promise<AssetItem['aiAnalysis']> => {
   try {
     const text = await smartRunner({
@@ -219,20 +263,6 @@ export const analyzeLifeContext = async (routine: string, assets: AssetItem[], t
       matrixCoordinates: { x: 50, y: 50, quadrantLabel: "Desconhecido" }
     };
   }
-};
-
-// Chat especializado usa streaming e precisa instanciar direto, mas usa o helper de Key
-export const createSpecialistChat = (thl: number, context: string): Chat => {
-  const ai = createClient();
-  // Tenta o modelo primário para chat
-  const modelToUse = MODEL_CASCADE[0];
-  
-  return ai.chats.create({
-    model: modelToUse, 
-    config: { 
-      systemInstruction: `Persona: Nietzsche + Pareto. THL: R$ ${thl.toFixed(2)}. Contexto: ${context}` 
-    },
-  });
 };
 
 export const getSunkCostAnalysis = async (scenario: SunkCostScenario, thl: CalculatedTHL): Promise<string> => {
@@ -353,4 +383,24 @@ export const getEnergyAudit = async (tasks: string): Promise<EnergyAuditItem[]> 
   } catch (e) {
     return [];
   }
+};
+
+export const createSpecialistChat = (thl: number, context: string): Chat => {
+  const ai = createClient();
+  return ai.chats.create({
+    model: 'gemini-3-flash-preview',
+    config: {
+      systemInstruction: `
+        ATUE COMO: O Estrategista Soberano (Zeus).
+        CONTEXTO: THL do usuário é R$ ${thl.toFixed(2)}.
+        RESUMO DA VIDA: ${context}
+        
+        DIRETRIZES:
+        1. Respostas curtas (max 3 parágrafos).
+        2. Use princípios de Nietzsche (Vontade de Potência, Amor Fati) e Pareto (80/20).
+        3. Seja duro com desculpas. O usuário quer verdade, não conforto.
+        4. Sempre calcule o custo da inação baseada na THL dele.
+      `,
+    }
+  });
 };

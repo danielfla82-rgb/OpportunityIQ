@@ -11,7 +11,6 @@ interface State {
   errorInfo: ErrorInfo | null;
 }
 
-// Fix: Use React.Component explicitly to avoid named import issues with some TS configurations
 class ErrorBoundary extends React.Component<Props, State> {
   public state: State = {
     hasError: false,
@@ -25,7 +24,6 @@ class ErrorBoundary extends React.Component<Props, State> {
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("Uncaught error:", error, errorInfo);
-    // Fix: setState is now correctly recognized from React.Component
     this.setState({ error, errorInfo });
   }
 
@@ -67,7 +65,6 @@ class ErrorBoundary extends React.Component<Props, State> {
       );
     }
 
-    // Fix: this.props is correctly recognized
     return this.props.children;
   }
 }

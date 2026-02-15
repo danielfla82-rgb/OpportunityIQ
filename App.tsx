@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './services/supabaseClient';
 import { dataService } from './services/dataService';
-import { FinancialProfile, CalculatedTHL, DelegationItem, AppView, LifeContext, ContextAnalysisResult, YearlyCompassData, AssetItem, MonthlyNote } from './types';
+import { FinancialProfile, CalculatedTHL, DelegationItem, AppView, LifeContext, ContextAnalysisResult, YearlyCompassData, AssetItem, MonthlyNote, SelfAnalysisData } from './types';
 import AuthScreen from './components/AuthScreen';
 import THLCalculator from './components/THLCalculator';
 import DelegationMatrix from './components/DelegationMatrix';
@@ -15,10 +15,10 @@ import LifeContextBuilder from './components/LifeContextBuilder';
 import AssetInventory from './components/AssetInventory';
 import DiagnosisReport from './components/DiagnosisReport';
 import Documentation from './components/Documentation';
-import SpecialistChat from './components/SpecialistChat';
 import YearlyGoals from './components/YearlyGoals';
 import MonthlyReflections from './components/MonthlyReflections';
-import { LayoutDashboard, Calculator, ListTodo, Target, Scale, Battery, ShoppingBag, Menu, X, BookUser, FileText, BookOpen, MessageSquare, Compass, LogOut, Wallet, ChevronDown, Sparkles, Calendar } from 'lucide-react';
+import SelfAnalysis from './components/SelfAnalysis'; // New Import
+import { LayoutDashboard, Calculator, ListTodo, Target, Scale, Battery, ShoppingBag, Menu, X, BookUser, FileText, BookOpen, Fingerprint, Compass, LogOut, Wallet, ChevronDown, Sparkles, Calendar } from 'lucide-react';
 
 const App: React.FC = () => {
   const [session, setSession] = useState<any>(null);
@@ -61,6 +61,7 @@ const App: React.FC = () => {
     financialGoal: { targetMonthlyIncome: 0, targetTHL: 0, deadlineMonth: "" }
   });
   const [monthlyNotes, setMonthlyNotes] = useState<MonthlyNote[]>([]);
+  const [selfAnalysis, setSelfAnalysis] = useState<SelfAnalysisData | null>(null); // New State
 
   // Auth Initialization
   useEffect(() => {
@@ -132,6 +133,7 @@ const App: React.FC = () => {
       setAnalysisResult(data.analysisResult);
       setYearCompass(data.yearCompass);
       setMonthlyNotes(data.monthlyNotes);
+      setSelfAnalysis(data.selfAnalysis); // Load Self Analysis
     } catch (error) {
       console.error("Error loading data:", error);
     } finally {
@@ -269,6 +271,17 @@ const App: React.FC = () => {
     }
   };
 
+  const handleSaveSelfAnalysis = async (data: SelfAnalysisData) => {
+      setSelfAnalysis(data);
+      if (session?.user?.id) {
+          const { error } = await dataService.saveSelfAnalysis(session.user.id, data);
+          if (error) {
+              console.error("Save failed:", error);
+              alert("Erro ao salvar autoanálise. Verifique o SQL de Migração.");
+          }
+      }
+  };
+
   if (!session) {
     return <AuthScreen onDemoLogin={handleDemoLogin} />;
   }
@@ -297,7 +310,7 @@ const App: React.FC = () => {
         { id: AppView.MONTHLY_REFLECTIONS, label: 'Diário Mensal', icon: Calendar },
         { id: AppView.LIFE_CONTEXT, label: 'Mapear Vida', icon: BookUser },
         { id: AppView.DIAGNOSIS, label: 'Diagnóstico', icon: FileText, hidden: !analysisResult },
-        { id: AppView.CHAT, label: 'Chat Especialista', icon: MessageSquare },
+        { id: AppView.SELF_ANALYSIS, label: 'Autoanálise', icon: Fingerprint }, // Replaced Chat
       ]
     },
     {
@@ -483,8 +496,9 @@ const App: React.FC = () => {
                /></div>
             )}
 
-            {view === AppView.CHAT && (
-              <div className="p-6 md:p-12 h-screen"><SpecialistChat thl={thlStats} lifeContext={lifeContext} /></div>
+            {/* NEW: Self Analysis View */}
+            {view === AppView.SELF_ANALYSIS && (
+              <div className="p-6 md:p-12 h-screen"><SelfAnalysis data={selfAnalysis} onSave={handleSaveSelfAnalysis} /></div>
             )}
 
             {view === AppView.DELEGATION && (
